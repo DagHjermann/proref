@@ -1,0 +1,457 @@
+---
+title: "52 PROREF figures"
+output: html_document
+---
+
+See 
+`K:\Avdeling\Mar\NOG\Section 212\2018\Seksjonsm?te_23-24 april 2018\PROREF-publis`
+
+
+```{r}
+library(data.table)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+
+
+# install.packages("xlsx")
+# library(xlsx)
+
+source("50fun_Calculate_PROREF_functions.R")
+```
+
+## Data
+```{r}
+load(file = "Milkys_2017/Data/12d_data_all.RData")
+# data_all from 12b4, this is the one to use for raw data
+
+load(file = "Milkys_2017/Data/12b3_data_all_2015sp.RData")        
+# data_all_2015sp - the better length-adjusted data
+```
+
+
+## Collect data - create data_all2
+```{r}
+# Unadjusted values
+df1 <- df2 <- df3 <- data_all
+df1$Basis <- "WW"
+df1$Value <- df1$VALUE_WW
+df1$Flag <- df1$FLAG1
+df2$Basis <- "DW"
+df2$Value <- df2$VALUE_DW
+df2$Flag <- df2$FLAG1
+df3$Basis <- "FB"
+df3$Value <- df2$VALUE_FB
+df3$Flag <- df3$FLAG1
+
+# Length-adjusted values
+df4 <- df5 <- df6 <- data_all_2015sp
+df4$Basis <- "WWa"
+df4$Value <- df4$VALUE_WWa
+df4$Flag <- df4$FLAG1
+df5$Basis <- "DWa"
+df5$Value <- df5$VALUE_DWa
+df5$Flag <- df5$FLAG1
+df6$Basis <- "FBa"
+df6$Value <- df6$VALUE_FBa
+df6$Flag <- df6$FLAG1
+
+# head(data_all, 1)
+# head(data_all_2015sp, 1)
+
+# dput(colnames(data_all_2015sp))
+for (x in c("VALUE_WW", "VALUE_DW", "VALUE_FB", 
+            "VALUE_WWa", "Flag_WWa", "VALUE_DWa", "VALUE_FBa", "Flag_DWa", "Flag_FBa", 
+            "WTMEA", "SPECIMEN_NO", "SUBNO")
+     ){
+  df1[[x]] <- NULL
+  df2[[x]] <- NULL
+  df3[[x]] <- NULL
+  df4[[x]] <- NULL
+  df5[[x]] <- NULL
+  df6[[x]] <- NULL
+  }
+
+if (mean(colnames(df1) == colnames(df4)) == 1){  # must be 1
+  cat("Column names for 1 and 4 are identical\n")
+} else {
+  cat("Column names for 1 and 4 are NOT identical - must be fixed!\n")
+}
+
+# head(df1, 1)
+# head(df4, 1)
+# cbind(colnames(df1), colnames(df4))
+
+data_all2 <- rbind(df1, df2, df3, df4, df5, df6)
+nrow(data_all2) # 1922925
+
+rm(df1, df2, df3, df4, df5, df6)
+
+```
+
+### Some corrections
+```{r}
+# Delete lines with no values
+sel <- is.na(data_all2$Value); sum(sel)
+data_all2 <- data_all2[!sel,]
+
+# Some adjusted HBCDD values with no unit, set them to UG (why did this happen?)
+sel <- with(data_all2, PARAM %in% "HBCDD")
+data_all2$UNIT[sel] <- "UG_P_KG"
+
+# TISSUE_NAME for blue mussel
+sel <- with(data_all2, LATIN_NAME == "Mytilus edulis" & TISSUE_NAME != "Whole soft body")
+data_all2$TISSUE_NAME[sel] <- "Whole soft body"
+
+sel <- with(data_all2, YEAR < 1981); sum(sel)
+data_all2 <- data_all2[!sel,]
+
+nrow(data_all2) # 1272232
+
+# sl? sammen  227G1 +  227G2 - already done
+# xtabs(~STATION_CODE + YEAR + LATIN_NAME, subset(data_all2, substr(STATION_CODE,1,4) %in% "227G"))
+```
+
+```{r}
+# Just for making R a little faster
+# data_all2 <- subset(data_all2, Basis == "WW")
+
+```
+
+## Make variables for number (N_over_LOQ) and proportion (P_over_LOQ) of data above LOQ
+```{r}
+# Percentage of data above LOQ, by year and parameter
+# tab <- xtabs(~YEAR + PARAM + is.na(Flag), data_all2)
+# round(tab[,,"TRUE"]/apply(tab, 1:2, sum), 3)
+
+data_all2 <- data_all2 %>%
+  group_by(STATION_CODE, YEAR, LATIN_NAME, TISSUE_NAME, PARAM, Basis) %>%
+  dplyr::mutate(N = n(), N_over_LOQ = sum(!grepl("<", FLAG1)))
+data_all2$P_overLOQ <- with(data_all2, N_over_LOQ/N)
+
+# Set to ordinary data frame
+data_all2 <- as.data.frame(data_all2)
+
+```
+
+```{r}
+years_backgr <- 2002:2016
+```
+
+
+## Example for paper 
+### DDEPP 
+```{r}
+# plot_increase_determ("DDEPP", species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+# plot_increase("DDEPP", "Gadus morhua", "Lever", "VALUE_WW", min_years = 5, data = subset(data_all, YEAR %in% years_backgr))
+par(mar = c(4,6,1,1))
+plot_increase_alt("DDEPP", "Gadus morhua", "Lever", "VALUE_WW", min_years = 5, 
+                  data = subset(data_all, YEAR %in% years_backgr))
+
+```
+
+### Same figure, saved to file
+```{r}
+# 
+png("Figures/52_DDEPP_codliver.png", height = 12, width = 17, units = 'cm', res = 300, type="cairo", antialias="default")
+par(mar = c(4,6,1,1))
+plot_increase_alt("DDEPP", "Gadus morhua", "Lever", "VALUE_WW", min_years = 5, data = subset(data_all, YEAR %in% years_backgr))
+dev.off()
+
+```
+
+### Tests - for adding manually to figure
+```{r}
+df <- differences_increasing_conc("DDEPP", sp = "Gadus morhua", "Lever", variable_name = "VALUE_WW",
+                                  quantile = 0.9, data = subset(data_all, YEAR %in% years_backgr))
+
+cbind(df$Test, round(df$P, 5))
+```
+
+### New version of plot for paper    
+Version 2a, 2b    
+```{r}
+
+df <- plot_increase_data("DDEPP", "Gadus morhua", "Lever", "VALUE_WW", min_years = 5, 
+                  data = subset(data_all, YEAR %in% years_backgr))
+
+df <- df %>%
+  mutate(Step = Rank - 1,
+         GroupA = Test %>% stringr::str_extract("([^[[:blank:]]]+)"),
+         GroupA_lineshift = gsub(",", "\n", GroupA)
+  )
+df <- df[-1,]
+
+round_p <- function(x){
+  case_when(
+    x >= 0.01 ~ sprintf("P = %.2f", x),
+    x >= 0.001 ~ sprintf("P = %.3f", x),
+    TRUE ~ "P < 0.001")
+}     
+# round_p(0.345)
+# round_p(0.075)
+# round_p(0.004)
+# round_p(0.0004)
+
+# For the points
+df2 <- df %>%
+  select(Step, Median1, Median2) %>%
+  tidyr::pivot_longer(-Step, names_to = "Data set", values_to = "Median") %>%
+  mutate(`Data set` = case_when(
+    `Data set` == "Median1" ~ "Data set 1",
+    `Data set` == "Median2" ~ "Data set 2")
+    )
+
+gg <- ggplot(df2, aes(Step)) +
+  geom_point(aes(y = Median, color = `Data set`), size = rel(3)) + 
+  scale_color_manual("", values = c("blue", "red3")) + 
+  geom_hline(yintercept = 0, size = 1) +
+  geom_label(data = df, aes(y = Median2 + 20, label = Station), vjust = 0) +
+  geom_label(data = df, aes(y = Median1 - 20, label = GroupA_lineshift), vjust = 1) +
+  annotate("text", x = 1:7, y = -280, label = round_p(df$P)) +
+  scale_x_continuous(breaks = 0:8, minor_breaks = seq(0.5, 8.5, 1)) +
+  scale_y_continuous(breaks = c(0, 100, 200, 300), minor_breaks = seq(0, 350, 50)) +
+  labs(x = "Step no.", y = "Median concentration") +
+  coord_cartesian(ylim = c(-300, 390), xlim = c(0.4,7.8), expand = FALSE)
+
+gg1 <- gg +
+  theme(legend.position = c(0.02, 0.97),
+        legend.justification = c("left", "top"),
+        legend.margin = margin(0, 12, 5, 2),
+        legend.title = element_blank(),
+        panel.grid.major.x = element_blank())
+gg2 <- gg +
+  theme_bw() +
+  theme(legend.position = c(0.02, 0.97),
+        legend.justification = c("left", "top"),
+        legend.margin = margin(0, 12, 5, 2),
+        legend.title = element_blank(),
+        panel.grid.major.x = element_blank())
+
+# Original
+ggsave("Figures/52_DDEPP_codliver_ver2a.png", gg1, 
+       height = 12, width = 17, units = 'cm', dpi = 300, 
+       type="cairo", antialias="default")
+
+# Black and white
+ggsave("Figures/52_DDEPP_codliver_ver2b.png", gg2, 
+       height = 12, width = 17, units = 'cm', dpi = 300, 
+       type="cairo", antialias="default")
+
+gg2
+
+```
+
+### As above but showing only until step 4   
+Version 2c, 2d  
+```{r}
+df_b <- df %>% filter(Step <= 4)
+df2_b <- df2 %>% filter(Step <= 4)
+
+gg <- ggplot(df2_b, aes(Step)) +
+  geom_point(aes(y = Median, color = `Data set`), size = rel(3)) + 
+  scale_color_manual("", values = c("blue", "red3")) + 
+  # geom_hline(yintercept = 0, size = 1) +
+  geom_label(data = df_b, aes(y = Median2 + 4, label = Station), vjust = 0, color = "red3") +
+  geom_label(data = df_b, aes(y = Median1 - 4, label = GroupA_lineshift), vjust = 1, color = "blue") +
+  annotate("text", x = 1:4, y = 2, vjust = 0,
+           label = paste0("Difference:\n", round_p(df_b$P))) +
+  scale_x_continuous(breaks = 0:4, minor_breaks = seq(0.5, 4.5, 1)) +
+  scale_y_continuous(breaks = seq(0, 100, 25), minor_breaks = seq(0, 150, 12.5)) +
+  labs(x = "Step no.", y = expression(Median~concentration~(mu*g/kg))) +
+  coord_cartesian(ylim = c(0, 60), xlim = c(0.4,4.8), expand = FALSE)
+
+gg1 <- gg +
+  theme(legend.position = c(0.05, 0.97),
+        legend.justification = c("left", "top"),
+        legend.margin = margin(0, 12, 5, 2),
+        legend.title = element_blank(),
+        legend.text = element_text(size = rel(1.2)),
+        axis.text.x = element_text(size = rel(1.4)),
+        panel.grid.major.x = element_blank())
+gg2 <- gg +
+  theme_bw() +
+  theme(legend.position = c(0.05, 0.97),
+        legend.justification = c("left", "top"),
+        legend.margin = margin(0, 12, 5, 2),
+        legend.title = element_blank(),
+        legend.text = element_text(size = rel(1.2)),
+        axis.text.x = element_text(size = rel(1.4)),
+        panel.grid.major.x = element_blank())
+
+# Original
+ggsave("Figures/52_DDEPP_codliver_ver2c.png", gg1,
+       height = 12, width = 17, units = 'cm', dpi = 300,
+       type="cairo", antialias="default")
+
+# Black and white
+ggsave("Figures/52_DDEPP_codliver_ver2d.png", gg2,
+       height = 12, width = 17, units = 'cm', dpi = 300,
+       type="cairo", antialias="default")
+
+gg2
+
+```
+
+## Process, step by step
+### Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+```{r}
+# debugonce(get_lower_medians)
+X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+str(X, 1)
+str(X$data_medians_list[["10B"]], 1)
+X$median_per_station
+```
+
+### find_set_differences
+```{r}
+diff <- find_set_differences(X)
+diff
+```
+
+### Plot first station 
+```{r}
+i <- 1
+diff$Station[i]
+ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
+
+# ggplot(X$data_medians_list[diff$Station[i:(i+1)]], aes(x = STATION_CODE, y = median)) + geom_point()
+```
+
+### Plot first vs. second station 
+```{r}
+# debugonce(find_set_difference)
+# diff <- find_set_difference(X, 1)
+diff <- find_set_difference(X, 2)
+
+```
+
+### Making a sorted station list
+```{r}
+############################################################################################
+#
+# Example of making a sorted station list (from least to most contaminanted) and make a "background station" plot 
+# Note: slightly outdated, the procedure now is a bit different
+#
+############################################################################################
+
+#
+# Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+#
+years_backgr <- 2002:2016
+# debugonce(get_lower_medians)
+X <- get_lower_medians("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+str(X, 1)
+# $ data_medians_list :List of 11
+# $ median_per_station: Named num [1:11] 0.05 0.11 0.045 0.045 0.1 0.07 0.046 0.059 0.0525 0.055 ...
+#  ..- attr(*, "names")= chr [1:11] "10B" "13B" "15B" "23B" ...
+
+
+
+#
+# Step 2:Find difference  between (example): station 1-3 vs. station 4, when stations are ordered 
+#   in increasing order by median
+#
+debugonce(find_set_difference)
+find_set_difference(X, 4)
+
+#
+# Step 3: Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)
+#
+find_set_differences(X)
+# This does the same but returns NULL if there is no data 
+differences_increasing_conc("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 4: Make plot of differences among stations in increasing order for one compound, species and tissue
+#
+plot_increase_determ("NI", species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 5: Make all plots for a group of chemicals; don't have to specify tissue; plot to file by default
+#
+determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
+                   determinantgroup = "metals", plot = "window")
+
+
+```
+
+
+### Creating median data
+
+#### Turn data into data table and check that there is only one UNIT per series
+```{r}
+data_all2_dt <- setDT(data_all2)
+
+check_unit <- data_all2_dt[!is.na(Value), .(n_unit = length(unique(UNIT))),
+                           by = .(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis)]
+table(check_unit$n_unit)
+
+
+```
+
+## Calculate medians using data.table() 
+Divided in two parts
+```{r}
+t0 <- Sys.time()
+
+data_all_median1 <- 
+  data_all2_dt[!is.na(Value),
+               .(N = .N, median(Value), SD = sd(Value), Unit = head(UNIT, 1), Over_LOQ = sum(is.na(Flag))),
+               by = .(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis)]
+
+data_all_median2 <- 
+  data_all2_dt[!is.na(Flag) & !is.na(Value),
+               .(Det_limit = median(Value), OverLOQ_min = min(Value), OverLOQ_max = max(Value)),
+               by = .(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis)]
+
+data_all_median <- left_join(data_all_median1, data_all_median2, 
+                             by = c("STATION_CODE", "TISSUE_NAME", "LATIN_NAME", "PARAM", "YEAR", "Basis"))
+
+t0 - Sys.time()
+```
+
+
+
+
+
+
+### Calculate medians
+```{r}
+# Put calculation of 'Value' last because otherwise the wrong 'Value' is used for Det_limit etc.
+
+# 40 seconds
+t0 <- Sys.time()
+data_all_median <- data_all2 %>%
+  group_by(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis) %>%
+  summarise(Det_limit = median(Value[!is.na(Flag)]), N = n(), Over_LOQ = sum(is.na(Flag)), 
+            OverLOQ_min = min(Value[is.na(Flag)], na.rm = TRUE), OverLOQ_max = max(Value[is.na(Flag)], na.rm = TRUE), 
+            SD = sd(Value, na.rm = TRUE),
+            Unit = first(UNIT), Unit_n = n_distinct(UNIT), Value = median(Value))
+data_all_median$P_over_LOQ <- with(data_all_median, Over_LOQ/N)
+t0 - Sys.time()
+
+# Medians for times series analysis: Set less than LOQ-data to 50%
+rawdata_for_regression <- data_all2
+sel <- !is.na(rawdata_for_regression$FLAG1)
+mean(sel)
+rawdata_for_regression$Value[sel] <- 0.5*rawdata_for_regression$Value[sel]
+
+# 40 seconds
+t0 <- Sys.time()
+data_all_median_for_regression <- rawdata_for_regression %>%
+  group_by(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis) %>%
+  summarise(Det_limit = median(Value[!is.na(Flag)]), N = n(), Over_LOQ = sum(is.na(Flag)), 
+            OverLOQ_min = min(Value[is.na(Flag)], na.rm = TRUE), OverLOQ_max = max(Value[is.na(Flag)], na.rm = TRUE), 
+            SD = sd(Value, na.rm = TRUE),
+            Unit = first(UNIT), Unit_n = n_distinct(UNIT), Value = median(Value))
+data_all_median_for_regression$P_over_LOQ <- with(data_all_median_for_regression, Over_LOQ/N)
+t0 - Sys.time()
+
+xtabs(~Unit_n, data_all_median)                 # Only 1 as it should be (174848 rows)
+xtabs(~Unit_n, data_all_median_for_regression)  # Only 1 as it should be (174848 rows)
+
+```
+
+

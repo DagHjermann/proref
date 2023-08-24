@@ -1,0 +1,41 @@
+
+From: Dag Øystein Hjermann 
+Sent: mandag 11. februar 2019 14:35
+To: Norman Whitaker Green <norman.green@niva.no>
+Subject: RE: PROREF-artikkelen
+
+Jo, det var også det vi endte med i den første (og andre rapporten).
+
+Har nå kjørt om igjen og nå er det mer moderate forskjeller – i de fleste tilfeller 0-2 prosent forskjell. For noen stoffer (arsen, sum PCB) er det markert forskjell (20-30%), og for 2 parameter - sumvariablene for PAH og PBDE - får man med flere stasjoner og en får en mye høyere PROREF. For SumPAH er det bare snakk om å gå fra 1 til 2 stasjoner, men PROREF går opp fra 6 til 33. 
+
+Tror ikke det er tilfeldig at dette skjer for sumvariable, og kanskje virker det slik at når man tar tilfeldige tall mellom LOQ/2 og LOQ, så får man større usikkerhet i estimater og dermed vanskeligere å «oppnå» signifikant forskjell mellom en stasjon og alle tidligere stasjoner?
+
+Dag 
+
+*************
+Attachment: 51 Proref - ww for selected determinants - NOG_DHJ.xlsx
+
+
+
+****************************************************************************************************
+
+From: Norman Whitaker Green 
+Sent: onsdag 6. februar 2019 13.42
+To: Dag Øystein Hjermann <Dag.Hjermann@niva.no>
+Subject: RE: PROREF-artikkelen
+
+Takk for strålende møte, Dag.
+
+Som nevnt:
+
+1)	Fil med siste posisjoner var tom
+2)	Vi bli enig om å bruke gjennomsnitt av 10 kjøringer for å bestemme hvilke LOQ skal brukes (virkårlige tall mellom 0.5 LOQ og LOQ).
+3)	Vi får ny PROREF tabell med to nye koloner med total antall stasjoner og total antall verdier
+4)	«Bxx» stasjoner er tatt ut
+5)	Ny PROREF verdier er merket dersom det er forskjell fra gamle versjonen (ikke sikkert du var enig med dette)
+
+
+Mvh
+
+Norman
+
