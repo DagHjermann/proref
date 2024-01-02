@@ -34,7 +34,9 @@ years_backgr <- 1992:2016
 #
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 
-load(file = "Milkys_2017/Data/12d_data_all.RData")
+# files have been copied from C:\Users\DHJ\OneDrive - NIVA\Documents\seksjon 212\Milkys 2017\Analyse\Data
+
+load(file = "Input_data/2017/12d_data_all.RData")
 # data_all from 12b4, this is the one to use for raw data
 
 # Comment out for speed.... so far
