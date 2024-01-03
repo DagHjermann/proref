@@ -37,25 +37,27 @@ load(file = "Input_data/2017/12b3_data_all_2015sp.RData")
 
 ### Some corrections
 ```{r}
+
 # Delete lines with no values
-sel <- is.na(data_all2$Value); sum(sel)
-data_all2 <- data_all2[!sel,]
+sel <- is.na(data_all$VALUE_WW); sum(sel)
+data_all <- data_all[!sel,]
 
 # Some adjusted HBCDD values with no unit, set them to UG (why did this happen?)
-sel <- with(data_all2, PARAM %in% "HBCDD")
-data_all2$UNIT[sel] <- "UG_P_KG"
+sel <- with(data_all, PARAM %in% "HBCDD")
+# table(addNA(data_all$UNIT[sel]))
+# data_all$UNIT[sel] <- "UG_P_KG"
 
 # TISSUE_NAME for blue mussel
-sel <- with(data_all2, LATIN_NAME == "Mytilus edulis" & TISSUE_NAME != "Whole soft body")
-data_all2$TISSUE_NAME[sel] <- "Whole soft body"
+sel <- with(data_all, LATIN_NAME == "Mytilus edulis" & TISSUE_NAME != "Whole soft body")
+data_all$TISSUE_NAME[sel] <- "Whole soft body"
 
-sel <- with(data_all2, YEAR < 1981); sum(sel)
-data_all2 <- data_all2[!sel,]
+sel <- with(data_all, YEAR < 1981); sum(sel)
+data_all <- data_all[!sel,]
 
-nrow(data_all2) # 1272232
+nrow(data_all) # 319179
 
 # sl? sammen  227G1 +  227G2 - already done
-# xtabs(~STATION_CODE + YEAR + LATIN_NAME, subset(data_all2, substr(STATION_CODE,1,4) %in% "227G"))
+# xtabs(~STATION_CODE + YEAR + LATIN_NAME, subset(data_all, substr(STATION_CODE,1,4) %in% "227G"))
 ```
 
 
