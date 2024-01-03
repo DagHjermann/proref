@@ -1,0 +1,151 @@
+---
+title: "53_Proref_revision_2024"
+format: html
+---
+
+## 
+
+```{r}
+library(data.table)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+
+
+# install.packages("xlsx")
+# library(xlsx)
+
+source("50fun_Calculate_PROREF_functions.R")
+```
+
+
+## Data
+```{r}
+
+# files have been copied from C:\Users\DHJ\OneDrive - NIVA\Documents\seksjon 212\Milkys 2017\Analyse\Data
+
+# load(file = "Milkys_2017/Data/12d_data_all.RData")
+load(file = "Input_data/2017/12d_data_all.RData")
+# data_all from 12b4, this is the one to use for raw data
+
+# load(file = "Milkys_2017/Data/12b3_data_all_2015sp.RData")        
+load(file = "Input_data/2017/12b3_data_all_2015sp.RData")        
+# data_all_2015sp - the better length-adjusted data
+```
+
+
+
+### Some corrections
+```{r}
+# Delete lines with no values
+sel <- is.na(data_all2$Value); sum(sel)
+data_all2 <- data_all2[!sel,]
+
+# Some adjusted HBCDD values with no unit, set them to UG (why did this happen?)
+sel <- with(data_all2, PARAM %in% "HBCDD")
+data_all2$UNIT[sel] <- "UG_P_KG"
+
+# TISSUE_NAME for blue mussel
+sel <- with(data_all2, LATIN_NAME == "Mytilus edulis" & TISSUE_NAME != "Whole soft body")
+data_all2$TISSUE_NAME[sel] <- "Whole soft body"
+
+sel <- with(data_all2, YEAR < 1981); sum(sel)
+data_all2 <- data_all2[!sel,]
+
+nrow(data_all2) # 1272232
+
+# sl? sammen  227G1 +  227G2 - already done
+# xtabs(~STATION_CODE + YEAR + LATIN_NAME, subset(data_all2, substr(STATION_CODE,1,4) %in% "227G"))
+```
+
+
+### Define years  
+```{r}
+years_backgr <- 2002:2016
+```
+
+
+## Process, step by step
+### Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+```{r}
+# debugonce(get_lower_medians)
+X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+str(X, 1)
+str(X$data_medians_list[["10B"]], 1)
+X$median_per_station
+```
+
+### find_set_differences
+```{r}
+diff <- find_set_differences(X)
+diff
+```
+
+### Plot first station 
+```{r}
+i <- 1
+diff$Station[i]
+ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
+
+# ggplot(X$data_medians_list[diff$Station[i:(i+1)]], aes(x = STATION_CODE, y = median)) + geom_point()
+```
+
+### Plot first vs. second station 
+```{r}
+# debugonce(find_set_difference)
+# diff <- find_set_difference(X, 1)
+diff <- find_set_difference(X, 2)
+
+```
+
+### Making a sorted station list
+```{r}
+############################################################################################
+#
+# Example of making a sorted station list (from least to most contaminanted) and make a "background station" plot 
+# Note: slightly outdated, the procedure now is a bit different
+#
+############################################################################################
+
+#
+# Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+#
+years_backgr <- 2002:2016
+# debugonce(get_lower_medians)
+X <- get_lower_medians("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+str(X, 1)
+# $ data_medians_list :List of 11
+# $ median_per_station: Named num [1:11] 0.05 0.11 0.045 0.045 0.1 0.07 0.046 0.059 0.0525 0.055 ...
+#  ..- attr(*, "names")= chr [1:11] "10B" "13B" "15B" "23B" ...
+
+
+
+#
+# Step 2:Find difference  between (example): station 1-3 vs. station 4, when stations are ordered 
+#   in increasing order by median
+#
+debugonce(find_set_difference)
+find_set_difference(X, 4)
+
+#
+# Step 3: Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)
+#
+find_set_differences(X)
+# This does the same but returns NULL if there is no data 
+differences_increasing_conc("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 4: Make plot of differences among stations in increasing order for one compound, species and tissue
+#
+plot_increase_determ("NI", species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 5: Make all plots for a group of chemicals; don't have to specify tissue; plot to file by default
+#
+determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
+                   determinantgroup = "metals", plot = "window")
+
+
+```
+
