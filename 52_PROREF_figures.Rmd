@@ -430,10 +430,14 @@ t0 - Sys.time()
 t0 <- Sys.time()
 data_all_median <- data_all2 %>%
   group_by(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis) %>%
-  summarise(Det_limit = median(Value[!is.na(Flag)]), N = n(), Over_LOQ = sum(is.na(Flag)), 
-            OverLOQ_min = min(Value[is.na(Flag)], na.rm = TRUE), OverLOQ_max = max(Value[is.na(Flag)], na.rm = TRUE), 
+  summarise(N = n(), 
+            Over_LOQ = sum(is.na(Flag)), 
+            Det_limit = ifelse(Over_LOQ < N, median(Value[!is.na(Flag)]), NA), 
+            OverLOQ_min = ifelse(Over_LOQ < N, min(Value[!is.na(Flag)]), NA), 
+            OverLOQ_max = ifelse(Over_LOQ < N, max(Value[!is.na(Flag)]), NA), 
             SD = sd(Value, na.rm = TRUE),
-            Unit = first(UNIT), Unit_n = n_distinct(UNIT), Value = median(Value))
+            Unit = first(UNIT), Unit_n = n_distinct(UNIT), 
+            Value = median(Value))
 data_all_median$P_over_LOQ <- with(data_all_median, Over_LOQ/N)
 t0 - Sys.time()
 
@@ -447,10 +451,14 @@ rawdata_for_regression$Value[sel] <- 0.5*rawdata_for_regression$Value[sel]
 t0 <- Sys.time()
 data_all_median_for_regression <- rawdata_for_regression %>%
   group_by(STATION_CODE, TISSUE_NAME, LATIN_NAME, PARAM, YEAR, Basis) %>%
-  summarise(Det_limit = median(Value[!is.na(Flag)]), N = n(), Over_LOQ = sum(is.na(Flag)), 
-            OverLOQ_min = min(Value[is.na(Flag)], na.rm = TRUE), OverLOQ_max = max(Value[is.na(Flag)], na.rm = TRUE), 
+  summarise(N = n(), 
+            Over_LOQ = sum(is.na(Flag)), 
+            Det_limit = ifelse(Over_LOQ < N, median(Value[!is.na(Flag)]), NA), 
+            OverLOQ_min = ifelse(Over_LOQ < N, min(Value[!is.na(Flag)]), NA), 
+            OverLOQ_max = ifelse(Over_LOQ < N, max(Value[!is.na(Flag)]), NA), 
             SD = sd(Value, na.rm = TRUE),
-            Unit = first(UNIT), Unit_n = n_distinct(UNIT), Value = median(Value))
+            Unit = first(UNIT), Unit_n = n_distinct(UNIT), 
+            Value = median(Value))
 data_all_median_for_regression$P_over_LOQ <- with(data_all_median_for_regression, Over_LOQ/N)
 t0 - Sys.time()
 
