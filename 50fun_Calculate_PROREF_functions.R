@@ -500,6 +500,8 @@ plot_increase <- function(par, sp, ti, variable_name, quantile = 0.9, data = dat
     points(Median2 ~ Rank, subset(df, P <= threshold_p[3]),                      pch = 21, cex = 1.4, bg = cols[3])
     lines(Median1 ~ Rank, df, type = "b", pch = 19, col = "blue")
   }
+  # Return data frame of differences invisibly  
+  invisible(df)
 }
 
 # plot_increase("PB", "Gadus morhua","Lever","VALUE_WW")
