@@ -185,7 +185,7 @@ get_lower_medians <- function(par, sp, ti, variable_name = "VALUE_WW", quantile 
     # compute medians per year/station (we include 'Variable', 'PARAM' and 'Species' as well although it has only one value. Nice to have in the final data frame)
     data_medians <- data_analysis %>%
       group_by(Variable, PARAM, Species, STATION_CODE, YEAR) %>%
-      dplyr::summarise(median = median(Measurement), n = n(), n_loq = sum(!grepl("<", FLAG1)))
+      dplyr::summarise(median = median(Measurement), n = n(), n_loq = sum(!grepl("<", FLAG1)), .groups = "drop")
     
     data_medians <- droplevels(data_medians)
     
