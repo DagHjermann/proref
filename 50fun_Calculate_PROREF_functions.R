@@ -316,9 +316,9 @@ find_set_difference <- function(object, i){
   if (i > 1){
     data1 <- get_stationdata_by_rankrange(object, 1:(i-1))
     data2 <- get_stationdata_by_rankrange(object, i)
-    data_for_test1 <- data.frame(set = "data1", median = data1$medians$median, 
+    data_for_test1 <- data.frame(set = "data1", median = data1$medians$median, n = data1$medians$n,
                                  stations = paste(data1$stations, collapse = ","), stringsAsFactors = FALSE)
-    data_for_test2 <- data.frame(set = "data2", median = data2$medians$median, 
+    data_for_test2 <- data.frame(set = "data2", median = data2$medians$median, n = data2$medians$n, 
                                  stations = paste(data2$stations, collapse = ","), stringsAsFactors = FALSE)
     data_for_test <- rbind(data_for_test1, data_for_test2)
     # Parametric test (t-test)
@@ -334,7 +334,10 @@ find_set_difference <- function(object, i){
                          Species = data1$medians$Species[1],
                          Median1 = median(data1$medians$median), Median2 = median(data2$medians$median), 
                          Max_reduced_data1 = max(data1$medians$median), Upper_quantile2 = max(data2$medians$median),
-                         W = testresult$statistic, P = testresult$p.value, stringsAsFactors = FALSE)
+                         W = testresult$statistic, P = testresult$p.value,
+                         N2 = sum(data2$medians$n), 
+                         Perc_over_loq2 = round(100*sum(data2$medians$n_loq)/sum(data2$medians$n),0), 
+                         stringsAsFactors = FALSE)
     # colnames(result)[12:14] <- c("SE", "t", "P")      # note hard-coded column numbers
   } else if (i == 1){
     data2 <- get_stationdata_by_rankrange(object, i)
@@ -344,7 +347,10 @@ find_set_difference <- function(object, i){
                          Param = data2$medians$PARAM[1],
                          Median1 = NA, Median2 = median(data2$medians$median), 
                          Max_reduced_data1 = NA, Upper_quantile2 = max(data2$medians$median),
-                         W = NA, P = NA, stringsAsFactors = FALSE)
+                         W = NA, P = NA,
+                         N2 = sum(data2$medians$n), 
+                         Perc_over_loq2 = round(100*sum(data2$medians$n_loq)/sum(data2$medians$n),0), 
+                         stringsAsFactors = FALSE)
   }
   result
 }
