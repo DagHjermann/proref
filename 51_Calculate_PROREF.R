@@ -605,10 +605,10 @@ if (FALSE){
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 
 if (FALSE){
-  df_cod_ww <- readRDS(file = "Data/51_df_cod_ww.rds")
-  df_bluemussel_ww <- readRDS(file = "Data/51_df_bluemussel_ww.rds")
-  df_bluemussel_ww_noB <- readRDS(file = "Data/51_df_bluemussel_ww_noB.rds")
-  df_snails_ww <- readRDS(file = "Data/51_df_snails_ww.rds")
+  df_cod_ww <- readRDS(file = "C:/Data/seksjon 212/Milkys/Data/51_df_cod_ww.rds")
+  df_bluemussel_ww <- readRDS(file = "C:/Data/seksjon 212/Milkys/Data/51_df_bluemussel_ww.rds")
+  df_bluemussel_ww_noB <- readRDS(file = "C:/Data/seksjon 212/Milkys/Data/51_df_bluemussel_ww_noB.rds")
+  df_snails_ww <- readRDS(file = "C:/Data/seksjon 212/Milkys/Data/51_df_snails_ww.rds")
   
   ?regex
   dir("Data", pattern = "51_df_cod_ww.*")
