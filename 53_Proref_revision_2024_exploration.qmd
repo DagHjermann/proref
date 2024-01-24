@@ -87,16 +87,16 @@ sort(X$median_per_station)
 ```
 ### find_set_difference
 ```{r}
-# debugonce(find_set_difference)
 
-find_set_difference(X, 2)
+# debugonce(find_set_difference)
+find_set_difference(X, 5)
 
 ```
 
 
 ### find_set_differences
 ```{r}
-# debugonce(find_set_difference)
+# debugonce(find_set_differences)
 diff <- find_set_differences(X)
 diff
 ```
@@ -115,7 +115,10 @@ differences_increasing_conc(
 
 ```
 
-### Plot first station 
+### Plot first station   
+
+- with percent over LOQ shown  
+
 ```{r}
 i <- 1
 diff$Station[i]
@@ -128,6 +131,8 @@ ggplot(X$data_medians_list[[diff$Station[i]]] %>% mutate(perc_over_loq = round(1
 ```
 ### Plot all stations  
 
+- with percent over LOQ shown  
+
 ```{r}
 
 ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))), 
@@ -136,6 +141,19 @@ ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))),
   geom_text(aes(label = Perc_over_loq2), hjust = 0, nudge_x = 0.1)
 
 ```
+### Plot all stations  
+
+- with median ratio shown  
+
+```{r}
+
+ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))), 
+       aes(Station, Median2)) +
+  geom_point() +
+  geom_text(aes(label = round(Median_ratio, 1)), hjust = 0, nudge_x = 0.1)
+
+```
+
 ### plot_increase  
 
 * 'plot_increase' is 'differences_increasing_conc' followed by plotting  
