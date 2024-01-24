@@ -431,7 +431,8 @@ compare_groups <- function(object, indices1, indices2){
 
 find_set_differences <- function(object){
   n <- length(object$data_medians_list)
-  1:n %>% map_df(function(j) find_set_difference(object, j))
+  result <- 1:n %>% map_df(function(j) find_set_difference(object, j))
+  result %>% mutate(Median_ratio = Median2/Median2[1])
 }
 
 # y <- find_set_differences(x)
