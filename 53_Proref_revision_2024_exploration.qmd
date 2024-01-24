@@ -10,7 +10,7 @@ library(data.table)
 library(dplyr)
 library(purrr)
 library(ggplot2)
-
+library(forcats)
 
 # install.packages("xlsx")
 # library(xlsx)
@@ -68,35 +68,127 @@ years_backgr <- 2002:2016
 
 
 ## Process, step by step
-### Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+### Step 1: get_lower_medians  
+
+- get data series (for several stations). Result: object with medians (per year) and medians (per station)  
+
 ```{r}
 # debugonce(get_lower_medians)
 X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+# X <- get_lower_medians("PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
 str(X, 1)
 str(X$data_medians_list[["10B"]], 1)
 X$median_per_station
 ```
+#### medians
+
+```{r}
+sort(X$median_per_station)
+```
+### find_set_difference
+```{r}
+# debugonce(find_set_difference)
+
+find_set_difference(X, 2)
+
+```
+
 
 ### find_set_differences
 ```{r}
+# debugonce(find_set_difference)
 diff <- find_set_differences(X)
 diff
+```
+
+### differences_increasing_conc  
+
+- 'differences_increasing_conc' is just 'get_lower_medians' followed by 'find_set_differences'  
+- 'differences_increasing_conc' is used in 'plot_increase'  
+
+```{r}
+
+differences_increasing_conc(
+  "DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+# differences_increasing_conc(
+#   "PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
 ```
 
 ### Plot first station 
 ```{r}
 i <- 1
 diff$Station[i]
-ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
+ggplot(X$data_medians_list[[diff$Station[i]]] %>% mutate(perc_over_loq = round(100*n_loq/n,0)), 
+       aes(x = STATION_CODE, y = median)) + 
+  geom_point() +
+  geom_text(aes(label = perc_over_loq), hjust = 0, nudge_x = 0.05)
 
 # ggplot(X$data_medians_list[diff$Station[i:(i+1)]], aes(x = STATION_CODE, y = median)) + geom_point()
 ```
+### Plot all stations  
+
+```{r}
+
+ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))), 
+       aes(Station, Median2)) +
+  geom_point() +
+  geom_text(aes(label = Perc_over_loq2), hjust = 0, nudge_x = 0.1)
+
+```
+### plot_increase  
+
+* 'plot_increase' is 'differences_increasing_conc' followed by plotting  
+* returns the rsult of 'differences_increasing_conc'  
+
+```{r}
+
+# DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW"
+
+diff <- plot_increase(par = "DDEPP", sp = "Gadus morhua", ti = "Lever", variable_name = "VALUE_WW",
+              data = subset(data_all, YEAR %in% years_backgr))  
+
+
+# debugonce(plot_increase)
+# debugonce(differences_increasing_conc)
+# debugonce(get_lower_medians)
+
+```
+
+- 'get_background_values' (like 'differences_increasing_conc') is 'get_lower_medians' followed by 'find_set_differences'  
+- but before that it also sets 'min_indiv_per_year' and tissue  
+
+```{r}
+
+get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name = "VALUE_WW", 
+                              years_backgr = 1992:2016,
+                              data = subset(data_all, YEAR %in% years_backgr))  
+
+```
+
+
+```{r}
+
+determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
+                   determinantgroup = "metals", plot = "window")
+```
+
+```{r}
+
+X$median_per_station
+
+```
+
 
 ### Plot first vs. second station 
 ```{r}
 # debugonce(find_set_difference)
 # diff <- find_set_difference(X, 1)
-diff <- find_set_difference(X, 2)
+# diff <- find_set_difference(X, 2)
+
+i <- 1:2
+ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
 
 ```
 
