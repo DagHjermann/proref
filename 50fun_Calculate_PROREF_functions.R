@@ -506,6 +506,7 @@ plot_increase <- function(par, sp, ti, variable_name, quantile = 0.9, data = dat
     points(Median2 ~ Rank, subset(df, P <= threshold_p[2] & P > threshold_p[3]), pch = 21, cex = 1.4, bg = cols[2])
     points(Median2 ~ Rank, subset(df, P <= threshold_p[3]),                      pch = 21, cex = 1.4, bg = cols[3])
     lines(Median1 ~ Rank, df, type = "b", pch = 19, col = "blue")
+    text(df$Rank + 0.1, df$Median2, round(df$Median_ratio, 1), adj = 0)
   }
   # Return data frame of differences invisibly  
   invisible(df)

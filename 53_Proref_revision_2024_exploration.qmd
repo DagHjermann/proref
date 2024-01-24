@@ -166,6 +166,10 @@ ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))),
 diff <- plot_increase(par = "DDEPP", sp = "Gadus morhua", ti = "Lever", variable_name = "VALUE_WW",
               data = subset(data_all, YEAR %in% years_backgr))  
 
+diff <- plot_increase(par = "CB28", sp = "Mytilus edulis", ti = "Whole soft body", variable_name = "VALUE_WW",
+                      min_indiv_per_year = 2, 
+                      data = subset(data_all, YEAR %in% years_backgr))  
+
 
 # debugonce(plot_increase)
 # debugonce(differences_increasing_conc)
