@@ -177,14 +177,73 @@ diff <- plot_increase(par = "CB28", sp = "Mytilus edulis", ti = "Whole soft body
 
 ```
 
+### get_background_values 
+
 - 'get_background_values' (like 'differences_increasing_conc') is 'get_lower_medians' followed by 'find_set_differences'  
 - but before that it also sets 'min_indiv_per_year' and tissue  
+- and in the 
 
 ```{r}
 
+# debugonce(get_background_values)
 get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name = "VALUE_WW", 
                               years_backgr = 1992:2016,
                               data = subset(data_all, YEAR %in% years_backgr))  
+
+```
+
+### get all selected background values   
+
+```{r}
+
+# "Safe" version of function (doesn't break the loop if there are errors)
+get_background_values_s <- safely(get_background_values)
+
+df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
+
+result_list <- map2(df_series_sel$PARAM, 
+     df_series_sel$Species,
+     \(x,y) get_background_values_s(determinant = x, species = y, var_name = "VALUE_WW", 
+                              years_backgr = 1992:2016,
+                              data = subset(data_all, YEAR %in% years_backgr))
+     )
+
+ok <- map(result_list, "error") %>% map_lgl(is.null)
+result <- map_dfr(result_list[ok], "result")
+
+```
+
+## 2022 data 
+
+```{r}
+
+years_backgr2 <- 2002:2022
+data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds") %>%
+  rename(YEAR = MYEAR)
+
+# All parameters
+# table(data_all2$PARAM)
+
+# test
+# get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name = "VALUE_WW",
+#                               years_backgr = 1992:2022,
+#                               data = subset(data_all2, YEAR %in% years_backgr2))
+
+result_list <- map2(df_series_sel$PARAM, 
+     df_series_sel$Species,
+     \(x,y) get_background_values_s(determinant = x, species = y, var_name = "VALUE_WW", 
+                              years_backgr = 1992:2022,
+                              data = subset(data_all2, YEAR %in% years_backgr2))
+     )
+
+ok <- map(result_list, "error") %>% map_lgl(is.null)
+result2 <- map_dfr(result_list[ok], "result")
+
+writexl::write_xlsx(result2, "Data/Proref_2022_version1.xlsx")
+
+
+# result2 %>% filter(is.na(Stations)) %>% select(PARAM, Species)
+
 
 ```
 
