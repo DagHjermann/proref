@@ -978,6 +978,10 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Median_lowest = NA, Median_ratio = NA, Q90 = NA, Q95 = NA, Max = NA, 
                          stringsAsFactors = FALSE)
   }  
+  df_diff <- df_diff %>%
+    mutate(
+      PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, 
+      Variable = var_name, UNIT = unit, .before = everything())
   list(
     result_one_line = result,
     differences = df_diff
