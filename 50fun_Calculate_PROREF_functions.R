@@ -870,57 +870,6 @@ get_background_stations <- function(determinant, species, var_name, years_backgr
 # test
 # get_background_stations("NI", "Gadus morhua", "VALUE_WW")
 
-# debugonce(get_background_stations)
-# get_background_stations("CD", "Gadus morhua", "VALUE_WW")
-
-#
-# get_background_values - is based on get_background_stations
-#   - old version:
-#     percentiles (for limits) is based on the already 'reduced' data (get_lower_medians)
-#
-get_background_values_OLD <- function(determinant, species, var_name, years_backgr = 2002:2016, ...){
-  if (species %in% "Gadus morhua"){
-    min_indiv_per_year = 10
-  } else if (species %in% "Mytilus edulis"){
-    min_indiv_per_year = 2
-  } else if (species %in% c("Littorina littorea", "Nucella lapillus")){     # i.e., VDSI
-    min_indiv_per_year = 1
-  }
-  X <- get_lower_medians(par = determinant, sp = species, ti = find_tissue(determinant = determinant, species = species), 
-                         variable = var_name, data = subset(data_all, YEAR %in% years_backgr), min_indiv_per_year = min_indiv_per_year, ...)
-  if (!is.null(X)){
-    df_diff <- find_set_differences(X)
-    i1 <- 1
-    i2 <- which(df_diff$P < 0.1)[1] - 1
-    if (is.na(i2)){
-      i2 <- nrow(df_diff)
-    }
-    stations <- df_diff$Station[i1:i2]
-    df <- X[["data_medians_list"]][df_diff$Station[i1:i2]] %>% bind_rows()
-    perc <- quantile(df$median, c(0.5, 0.9, 0.95, 1))
-    result <- data.frame(PARAM = determinant, LATIN_NAME = species, Variable = var_name, 
-                         Years_start = head(years_backgr, 1),
-                         Years_end = tail(years_backgr, 1),
-                         Stations = paste(stations, collapse = ","),
-                         N_stations = length(stations),
-                         N = nrow(df),
-                         Median = perc[1], Q90 = perc[2], Q95 = perc[3], Max = perc[4], 
-                         stringsAsFactors = FALSE)
-  } else {
-    result <- data.frame(PARAM = determinant, LATIN_NAME = species, Variable = var_name, 
-                         Years_start = head(years_backgr, 1),
-                         Years_end = tail(years_backgr, 1),
-                         Stations = NA,
-                         N_stations = NA,
-                         N = NA,
-                         Median = NA, Q90 = NA, Q95 = NA, Max = NA, 
-                         stringsAsFactors = FALSE)
-  }
-  result
-}
-
-
-
 # Plot table (without text colors)
 plot_table <- function(tab, title = ""){
   # tab <- result
@@ -951,68 +900,6 @@ tableplot_increase_mult <- function(determ, species, variable, data,
 
 # tableplot_increase_mult(determ, species = "Mytilus edulis", variable = "conc_ww", determinantgroup = "PCB", 
 #   plot = "", data = cemp_muss_alt, min_years = 16, min_indiv_per_year = 1)
-
-#
-# get_background_values - is based on get_background_stations
-#   - another old version
-#     percentiles (for limits) is based on the selected years for each station (pretty smart done if you ask me)
-#
-get_background_values_OLD <- function(determinant, species, var_name, years_backgr = 2002:2016, 
-                                      data = subset(data_all, YEAR %in% years_backgr), ...){
-  if (species %in% "Gadus morhua"){ 
-    min_indiv_per_year = 10
-  } else if (species %in% "Mytilus edulis"){
-    min_indiv_per_year = 2
-  }
-  tissue <- find_tissue(determinant = determinant, species = species)
-  sel_analysis <-  with(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & !is.na(data[,var_name]))
-  df <- data[sel_analysis,] %>% as.data.frame()
-  unit <- unique(df$UNIT)
-  if (length(unit) == 0)
-    unit <- "no data"
-  if (length(unit) > 1)
-    unit <- ">1 unit"
-  X <- get_lower_medians(par = determinant, sp = species, ti = tissue, 
-                         variable = var_name, data = data, min_indiv_per_year = min_indiv_per_year, ...)
-  if (!is.null(X) & !unit %in% c("no data", ">1 unit")){
-    df_diff <- find_set_differences(X)
-    i1 <- 1
-    i2 <- which(df_diff$P < 0.1)[1] - 1
-    if (is.na(i2)){
-      i2 <- nrow(df_diff)
-    }
-    stations <- df_diff$Station[i1:i2]
-    yr_list <- seq_along(stations) %>% map(function(k) X[[1]][[stations[k]]]$YEAR)
-    get_data_for_station <- function(k) 
-      subset(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & 
-               STATION_CODE %in% stations[k] & YEAR %in% yr_list[[k]] & 
-               !is.na(data[,var_name])
-      )
-    df <- seq_along(stations) %>% map(get_data_for_station) %>% bind_rows() %>% as.data.frame()
-    N <- nrow(df)
-    ci_q <- qt(p = c(0.95, 0.975), N)
-    upper_CI <- mean(df[,var_name]) + ci_q*sd(df[,var_name])/sqrt(N)
-    upper_perc <- quantile(df[,var_name], c(0.5, 0.9, 0.95, 1))
-    result <- data.frame(PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, Variable = var_name, UNIT = unit,
-                         Year_min = min(df$YEAR),
-                         Year_max = max(df$YEAR),
-                         Stations = paste(stations, collapse = ","),
-                         N_stations = length(stations),
-                         N = N, Median = upper_perc[1], 
-                         CI90 = upper_CI[1], CI95 = upper_CI[2], Q90 = upper_perc[2], Q95 = upper_perc[3], Max = upper_perc[4], 
-                         stringsAsFactors = FALSE)
-  } else {
-    result <- data.frame(PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, Variable = var_name, UNIT = unit,
-                         Year_min = head(years_backgr, 1),
-                         Year_max = tail(years_backgr, 1),
-                         Stations = NA,
-                         N_stations = NA,
-                         N = NA,
-                         Median = NA, Q90 = NA, Q95 = NA, Max = NA, 
-                         stringsAsFactors = FALSE)
-  }
-  result
-}
 
 
 
@@ -1076,7 +963,9 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Years_end = tail(years_backgr, 1),
                          Stations = paste(stations, collapse = ","),
                          N_stations = length(stations),
-                         N = N, Median = upper_perc[1], 
+                         N = N, 
+                         Median_lowest = upper_perc[1], 
+                         Median_ratio = df_diff$Median_ratio[i2],
                          CI90 = upper_CI[1], CI95 = upper_CI[2], Q90 = upper_perc[2], Q95 = upper_perc[3], Max = upper_perc[4], 
                          stringsAsFactors = FALSE)
   } else {
@@ -1086,10 +975,24 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Stations = NA,
                          N_stations = NA,
                          N = NA,
-                         Median = NA, Q90 = NA, Q95 = NA, Max = NA, 
+                         Median_lowest = NA, Median_ratio = NA, Q90 = NA, Q95 = NA, Max = NA, 
                          stringsAsFactors = FALSE)
   }  
-  result
+  list(
+    result_one_line = result,
+    differences = df_diff
+  )
+}
+
+if (FALSE){
+  # Usage
+  # debugonce(get_background_values)
+  one_case <- get_background_values(determinant = "DDEPP", species = "Gadus morhua", 
+                                    var_name = "VALUE_WW", 
+                                    years_backgr = 1992:2016,
+                                    data = subset(data_all, YEAR %in% years_backgr))  
+  
+  str(one_case, 1)
 }
 
 
