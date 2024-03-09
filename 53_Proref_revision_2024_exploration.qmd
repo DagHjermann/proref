@@ -3,7 +3,7 @@ title: "53_Proref_revision_2024"
 format: html
 ---
 
-## 
+## Packages, loading functions
 
 ```{r}
 library(data.table)
@@ -16,6 +16,10 @@ library(forcats)
 # library(xlsx)
 
 source("50fun_Calculate_PROREF_functions.R")
+
+# For printout:
+hyphens <- "-------------------------------------------------------------------------------\n"
+
 ```
 
 
@@ -70,48 +74,61 @@ years_backgr <- 2002:2016
 ## Process, step by step
 ### Step 1: get_lower_medians  
 
-- get data series (for several stations). Result: object with medians (per year) and medians (per station)  
+- get data series for one substance and all stations  
+- Result: object with medians (per year) and medians (per station)  
 
 ```{r}
 # debugonce(get_lower_medians)
-X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+                       data = subset(data_all, YEAR %in% years_backgr))
 # X <- get_lower_medians("PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+cat(hyphens, "Result object \n", hyphens)
 str(X, 1)
-str(X$data_medians_list[["10B"]], 1)
-X$median_per_station
-```
-#### medians
-
-```{r}
+cat(hyphens, "'data_medians_list' for '10B'\n", hyphens)
+str(X$data_medians_list[["10B"]])
+cat(hyphens, "'median_per_station' (here, sorted)\n", hyphens)
 sort(X$median_per_station)
+
 ```
-### find_set_difference
+### find_set_difference  
 ```{r}
+
+i <- 3
 
 # debugonce(find_set_difference)
-find_set_difference(X, 5)
+a_single_test <- find_set_difference(X, i)
+
+cat(hyphens, "Result object, testing station no. 1 -", i-1, "vs. station no.", i, "\n", hyphens)
+str(a_single_test)
 
 ```
 
 
-### find_set_differences
+### find_set_differences  
+
+- Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)  
+
 ```{r}
+
 # debugonce(find_set_differences)
-diff <- find_set_differences(X)
-diff
+diff <- find_set_differences(X) 
+
 ```
 
 ### differences_increasing_conc  
 
 - 'differences_increasing_conc' is just 'get_lower_medians' followed by 'find_set_differences'  
-- 'differences_increasing_conc' is used in 'plot_increase'  
+- this function is used in 'plot_increase'  
 
 ```{r}
 
-differences_increasing_conc(
-  "DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+diff <- differences_increasing_conc(
+  "DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+  data = subset(data_all, YEAR %in% years_backgr))
+
 # differences_increasing_conc(
-#   "PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+#   "PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+#   data = subset(data_all, YEAR %in% years_backgr))
 
 ```
 
@@ -120,6 +137,7 @@ differences_increasing_conc(
 - with percent over LOQ shown  
 
 ```{r}
+
 i <- 1
 diff$Station[i]
 ggplot(X$data_medians_list[[diff$Station[i]]] %>% mutate(perc_over_loq = round(100*n_loq/n,0)), 
@@ -141,9 +159,9 @@ ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))),
   geom_text(aes(label = Perc_over_loq2), hjust = 0, nudge_x = 0.1)
 
 ```
-### Plot all stations  
+### Plot all stations with 'median ratio'   
 
-- with median ratio shown  
+- 'median ratio' is the ratio between the median of a station and the median of the first station  
 
 ```{r}
 
@@ -179,10 +197,9 @@ diff <- plot_increase(par = "CB28", sp = "Mytilus edulis", ti = "Whole soft body
 
 ### get_background_values 
 
-- 'get_background_values' (like 'differences_increasing_conc') is 'get_lower_medians' followed by 'find_set_differences'  
-- but before that it also sets 'min_indiv_per_year' and tissue  
-- and in the 
-
+- like 'differences_increasing_conc', 'get_background_values' is 'get_lower_medians' 
+followed by 'find_set_differences'  
+- but before that it also sets 'min_indiv_per_year' and tissue based on determinant (substance) and species 
 ```{r}
 
 # debugonce(get_background_values)
@@ -194,6 +211,8 @@ get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name 
 
 ### get all selected background values   
 
+
+
 ```{r}
 
 # "Safe" version of function (doesn't break the loop if there are errors)
@@ -201,33 +220,64 @@ get_background_values_s <- safely(get_background_values)
 
 df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
 
-result_list <- map2(df_series_sel$PARAM, 
-     df_series_sel$Species,
+cat(hyphens, "Number of selected compounds (per species)\n", hyphens)  
+df_series_sel$Species %>% table()
+
+result_list <- map2(
+  df_series_sel$PARAM, 
+  df_series_sel$Species,
      \(x,y) get_background_values_s(determinant = x, species = y, var_name = "VALUE_WW", 
                               years_backgr = 1992:2016,
                               data = subset(data_all, YEAR %in% years_backgr))
      )
 
 ok <- map(result_list, "error") %>% map_lgl(is.null)
-result <- map_dfr(result_list[ok], "result")
+cat(hyphens, "Number of successful compound*species\n", hyphens)
+cat(sum(ok), "out of", length(ok), "\n")
+
+result <- map_dfr(result_list[ok], "result")  
+cat(hyphens, "Result\n", hyphens)
+str(result)
 
 ```
 
-## 2022 data 
+## Data through 2022  
+
+### Raw data for analysis
+```{r}
+data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds") %>%
+  rename(YEAR = MYEAR)
+```
+
+### Change some parameters in list of parameters to be analysed  
 
 ```{r}
 
-years_backgr2 <- 2002:2022
-data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds") %>%
-  rename(YEAR = MYEAR)
+xtabs(~PARAM, data_all2 %>% filter(grepl("SCCP", PARAM)))
+xtabs(~PARAM, df_series_sel %>% filter(grepl("SCCP", PARAM)))
 
-# All parameters
-# table(data_all2$PARAM)
+xtabs(~PARAM, data_all2 %>% filter(grepl("PAH", PARAM)))
+xtabs(~PARAM, df_series_sel %>% filter(grepl("PAH", PARAM)))
 
-# test
-# get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name = "VALUE_WW",
-#                               years_backgr = 1992:2022,
-#                               data = subset(data_all2, YEAR %in% years_backgr2))
+df_series_sel <- df_series_sel %>%
+  mutate(
+    PARAM = case_when(
+      grepl("SCCP", PARAM) ~ "SCCP eksl. LOQ",
+      grepl("MCCP", PARAM) ~ "MCCP eksl. LOQ",
+      grepl("PAH", PARAM) ~ "PAH16_exloq",
+      TRUE ~ PARAM
+    )
+  )
+
+```
+### Run analysis for data through 2022  
+
+```{r}
+
+cat(hyphens, "Number of selected compounds (per species)\n", hyphens)  
+df_series_sel$Species %>% table()
+
+years_backgr2 <- 1992:2022
 
 result_list <- map2(df_series_sel$PARAM, 
      df_series_sel$Species,
@@ -237,13 +287,14 @@ result_list <- map2(df_series_sel$PARAM,
      )
 
 ok <- map(result_list, "error") %>% map_lgl(is.null)
-result2 <- map_dfr(result_list[ok], "result")
+cat(hyphens, "Number of successful compound*species\n", hyphens)
+cat(sum(ok), "out of", length(ok), "\n")
 
-writexl::write_xlsx(result2, "Data/Proref_2022_version1.xlsx")
+result <- map_dfr(result_list[ok], "result")  
+cat(hyphens, "Result\n", hyphens)
+str(result)
 
-
-# result2 %>% filter(is.na(Stations)) %>% select(PARAM, Species)
-
+writexl::write_xlsx(result2, "Data/Proref_2022_version1.xlsx")   
 
 ```
 
