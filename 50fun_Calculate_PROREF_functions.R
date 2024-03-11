@@ -909,6 +909,7 @@ tableplot_increase_mult <- function(determ, species, variable, data,
 #     percentiles (for limits) is based on the full data
 #
 get_background_values <- function(determinant, species, var_name, years_backgr = 1992:2016, 
+                                  threshold_p = 0.10,
                                   data = subset(data_all, YEAR %in% years_backgr), ...){
   fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
   data <- as.data.frame(data)
@@ -943,7 +944,7 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
   if (!is.null(X) & !unit %in% c("no data", ">1 unit")){
     df_diff <- find_set_differences(X)
     i1 <- 1
-    i2 <- which(df_diff$P < 0.1)[1] - 1
+    i2 <- which(df_diff$P < threshold_p)[1] - 1
     if (is.na(i2)){
       i2 <- nrow(df_diff)
     }

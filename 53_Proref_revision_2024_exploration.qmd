@@ -300,6 +300,19 @@ writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")
 
 ```
 
+### Get detailed results  
+
+```{r}
+
+# str(result_list[[1]]$result, 1)
+
+result_detailed <- map_dfr(result_list[ok], c("result", "differences"))  
+cat(hyphens, "Detailed result\n", hyphens)
+str(result_detailed)
+
+```
+
+
 ### Plotting  
 
 ```{r}
@@ -307,9 +320,14 @@ writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")
 determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
 
 ggplot(
-  result %>% filter(PARAM %in% determ),
+  result_detailed %>% filter(PARAM %in% determ),
   aes(x = PARAM, y = median_per_station, color = PARAM))
 
+ggplot(
+  result_detailed %>% filter(PARAM %in% "DDEPP"),
+  aes(Station, Median2)) +
+  geom_point() +
+  geom_text(aes(label = round(Median_ratio, 1)), hjust = 0, nudge_x = 0.1)
 
 ```
 
