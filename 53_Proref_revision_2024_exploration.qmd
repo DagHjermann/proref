@@ -11,11 +11,17 @@ library(dplyr)
 library(purrr)
 library(ggplot2)
 library(forcats)
+library(ggeasy)
+library(tidyr)
+library(ggrepel)
 
 # install.packages("xlsx")
 # library(xlsx)
 
 source("50fun_Calculate_PROREF_functions.R")
+
+df_old_result <- readxl::read_excel("data/Proref_2022_version1.xlsx")
+df_stations <- readxl::read_excel("data/Kartbase_edit.xlsx")
 
 # For printout:
 hyphens <- "-------------------------------------------------------------------------------\n"
@@ -310,34 +316,344 @@ result_detailed <- map_dfr(result_list[ok], c("result", "differences"))
 cat(hyphens, "Detailed result\n", hyphens)
 str(result_detailed)
 
+threshold_p1 <- 0.10
+threshold_p2 <- 0.05
+threshold_medianratio <- 2
+
+# Adding columns for background and last rank  
+
+result_detailed <- result_detailed %>% 
+    # filter(PARAM %in% "CU" & LATIN_NAME %in% species) %>%   
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME) %>%
+    mutate(
+      P_round = round(P, 3),       # just for more easily readable output
+      P_prev = lag(P_round),        # previous P value
+      P_change1 = case_when(
+        Rank == 1 ~ FALSE,
+        TRUE ~ (P < threshold_p1) & (P_prev >= threshold_p1)), # change in P value
+      P_cum1 = cumsum(P_change1), # cumulative change
+      P_change2 = case_when(
+        Rank == 1 ~ FALSE,
+        TRUE ~ (P < threshold_p2) & (P_prev >= threshold_p2)), # change in P value
+      P_cum2 = cumsum(P_change2), # cumulative change
+      Background1 = case_when(
+        P_cum1 == 0 ~ "Background",
+        TRUE ~ "Other"),
+      Background1b = case_when(
+        P_cum1 == 0 & Median_ratio <= threshold_medianratio ~ "Background",
+        TRUE ~ "Other"),
+      Background2 = case_when(
+        P_cum2 == 0 ~ "Background",
+        TRUE ~ "Other"),
+      Background = case_when(
+        Background1b == "Background" ~ "Background 1b and 2",
+        Background1 == "Background" ~ "Background 1 and 2",
+        Background2 == "Background" ~ "Background 2",
+        TRUE ~ "Other"),
+      # This is used only for adding PARAM label to the last station
+      #   in plots:
+      Last_rank = (Rank == max(Rank))
+      ) %>% 
+  ungroup() %>%
+    mutate(
+      Line_label = case_when(
+        Last_rank ~ PARAM,
+        TRUE ~ NA)
+    ) #%>%
+  #select(-P_prev, -P_change1, -P_cum1, -P_change2, -P_cum2, -Last_rank)
+
+```
+
+#### Table check 
+
+```{r}
+
+xtabs(~Background, result_detailed)
+
 ```
 
 
-### Plotting  
+#### Plotting 'result_detailed'  
+
+Example: metals in cod  
 
 ```{r}
 
 determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+determ <- c("SCCP eksl. LOQ", "MCCP eksl. LOQ")
+species <- "Gadus morhua"
+
+pointcolors <- c("Background 1b and 2" = "blue4", 
+               "Background 1 and 2" = "purple", 
+               "Background 2" = "green3", 
+               "Other" = "orange")
+
+gg <- ggplot(
+  result_detailed %>% filter(PARAM %in% determ & LATIN_NAME %in% species), 
+  aes(x = Rank, y = Median2, group = PARAM)) +
+  geom_line() +  
+  geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
+  scale_fill_manual(values = pointcolors) +
+  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(4))+
+  labs(title = "Concentrations", x = "Station ranking", y = "Concentration")
+
+# gg
+gg + scale_y_log10()
+
+
 
 ggplot(
-  result_detailed %>% filter(PARAM %in% determ),
-  aes(x = PARAM, y = median_per_station, color = PARAM))
+  result_detailed %>% filter(PARAM %in% determ & LATIN_NAME %in% species), 
+  aes(x = Rank, y = Median_ratio, group = PARAM)) +
+  geom_line() +  
+  geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
+  scale_fill_manual(values = pointcolors) +
+  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(4))+
+  labs(title = "Concentrations ratio to first station", 
+       x = "Station ranking", y = "Concentration ratio")
 
-ggplot(
-  result_detailed %>% filter(PARAM %in% "DDEPP"),
-  aes(Station, Median2)) +
-  geom_point() +
-  geom_text(aes(label = round(Median_ratio, 1)), hjust = 0, nudge_x = 0.1)
+
+```
+
+#### Plot 'median ratio'
+
+- note: not including 'Background 1b' points  
+    - this is because the 'Background 1b' 
+
+```{r}
+
+# 
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 2"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Backg = "Background 2"))
+
+result_detailed_summ_all <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME, UNIT) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))
+
+gg <- map(
+  c("Gadus morhua", "Mytilus edulis"),
+  \(species)
+  ggplot(result_detailed_summ_all %>% filter(LATIN_NAME == species),
+         aes(x = n, y = Median_ratio, color = Background)) +
+  geom_point() + 
+  geom_text_repel(aes(label = PARAM), hjust = 0, nudge_x = 0.2, size = rel(3),
+                  max.overlaps = 5) +
+  labs(title = paste("Median ratio -", species),
+       x = "Number of background stations", y = "Max median ratio")
+)
+
+gg[[1]]
+# gg[[1]] + scale_y_log10()
+gg[[2]]
+    
+```
+
+
+```{r}
+
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1b %in% "Background") %>%
+      mutate(Background = "Background 1b"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background") %>%
+      mutate(Background = "Background 2"))
+
+result_summ <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))  %>%
+  arrange(PARAM, LATIN_NAME, Background) 
+
+# View(result_summ)
+
+```
+
+
+### 1b
+
+```{r}
+
+# df_old_result %>%
+#   filter(LATIN_NAME == "Gadus morhua") %>% pull(PARAM)  %>% dput()
+# df_old_result %>%
+#   filter(LATIN_NAME == "Mytilus edulis") %>% pull(PARAM) %>% dput()
+
+param_levels <- c("HG", "CD", "CR", "CU", "NI", "PB", "AG", "ZN", "AS", 
+                  "CB_S7", "DDEPP", "HCHG", "HCB", 
+                  "NAP", "ANT", "FLU", "BAA", "BAP", "PAH16_exloq", 
+                  "4-N-NP", "4-N-OP", "4-T-NP", "4-T-OP", 
+                  "BDE47", "BDE6S", "HBCDA", "PFOA", "PFOS", "PFOSA", 
+                  "SCCP eksl. LOQ", "MCCP eksl. LOQ", "TBT")
+
+
+result_1b <- result_detailed %>% 
+  filter(!is.na(Background1b) & PARAM %in% df_old_result$PARAM) %>%
+  left_join(df_stations, by = c("Station" = "STATION_CODE"), relationship = "many-to-one") %>%
+  arrange(desc(Station_order)) %>%
+  mutate(
+    Station_name = fct_inorder(paste(Station, Station_short, sep = "_")), 
+    PARAM = factor(PARAM, levels = param_levels)) 
+
+```
+#### Plot cod  
+```{r}
+
+result_1b %>%
+  filter(LATIN_NAME == "Gadus morhua") %>% 
+  ggplot(aes(x = PARAM, y = Station_name, fill = Background1b)) +
+  geom_tile() +
+  scale_fill_manual(values = c("Background" = "blue4", "Other" = "orange")) +
+  easy_rotate_x_labels(angle = -45) +
+  labs(title = "Background 1b, cod", x = "Parameter", y = "Station")
+
+```
+
+#### Plot blue mussel
+
+```{r}
+
+#| fig-width: 6
+#| fig-height: 12
+
+result_1b %>%
+  filter(LATIN_NAME == "Mytilus edulis") %>% 
+  ggplot(aes(x = PARAM, y = Station_name, fill = Background1b)) +
+  geom_tile() +
+  scale_fill_manual(values = c("Background" = "blue4", "Other" = "orange")) +
+  easy_rotate_x_labels(angle = -45) +
+  labs(title = "Background 1b, blue mussel", x = "Parameter", y = "Station")
+
+```
+
+```{r}
+
+dput(sort(unique(result_1b$PARAM)))
+
+c("AG", "ANT", "AS", "CD", "CR", "CU", "HG", "NI", "PB", "ZN".
+  
+
+"BAA", "BAP", "BDE47", "BDE6S", "BDESS", "CB_S7", "DDEPP", "FLU", "HBCDA", "HCB", "HCHG",, "MCCP eksl. LOQ", 
+"NAP", "PAH16_exloq", "PFOA", "PFOS", "PFOSA", "SCCP eksl. LOQ", 
+"TBT", "4-N-NP", "4-N-OP", "4-T-NP", "4-T-OP", )
+
+
+
+
+result_1b_for_matrix <- result_detailed %>% 
+  filter(!is.na(Background1b)) %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  distinct(Param_species, Station, Background1b)
+# apply(!is.na(result_1b_natrix), 2, sum)
+
+result_1b_for_matrix <- result_detailed %>% 
+  filter(!is.na(Background1b)) %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  ggplot(aes(x = PARAM, y = Station, fill = Background1b)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
+  
+
+
+```
+
+
+#### Plot matrix cod  
+```{r}
+
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  count(PARAM) %>%
+  arrange(desc(n))
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  count(Station) %>%
+  arrange(desc(n))
+
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  add_count(PARAM, name = "count_param") %>%
+  add_count(Station, name = "count_station") %>%
+  filter(count_param >= 10) %>%
+  # filter(count_param >= 10 & count_station >= 11) %>%
+  ggplot(aes(x = PARAM, y = Station, fill = Background)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
 
 ```
 
 
 ```{r}
 
-determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
-plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
-                   determinantgroup = "metals", plot = "window")
+result_matrix_all <- result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  count(Param_species, Station) %>%
+  pivot_wider(names_from = Param_species, values_from = n, values_fill = 0)
+
+
+
+result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  count(Param_species) %>%
+  arrange(desc(n))
+result_detailed %>%
+  count(Station) %>%
+  arrange(desc(n))
+
+result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  add_count(Param_species, name = "count_param") %>%
+  add_count(Station, name = "count_station") %>%
+  filter(count_param >= 15 & count_station >= 10) %>%
+  ggplot(aes(x = Param_species, y = Station, fill = Background)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
+  
 ```
+
+
+### Get summary result   
+
+#### original function  
+```{r}
+
+result_summ <- map_dfr(result_list[ok], c("result", "result_one_line"))  
+
+# str(result_list[[1]], 1)
+# str(result_list[[1]]$result, 1)
+
+```
+
+
+
+
 
 ```{r}
 
