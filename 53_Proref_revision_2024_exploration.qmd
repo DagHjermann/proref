@@ -257,7 +257,41 @@ data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds")
   rename(YEAR = MYEAR)
 ```
 
-### Change some parameters in list of parameters to be analysed  
+#### Remove some stations  
+```{r}
+
+# "B" mussel stations (industry data, from Langøya?)
+xtabs(~STATION_CODE, data_all2 %>% filter(substr(STATION_CODE, 1, 1) == "B"))
+
+data_all2 <- data_all2 %>%
+  filter(!substr(STATION_CODE, 1, 1) == "B")
+
+# Atations used for very few years
+check <- data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  count(STATION_CODE) %>%
+  arrange(n)
+# check
+table(check$n)
+
+# Remove those with 4 years and less
+data_all2 <- data_all2 %>%
+  group_by(STATION_CODE) %>%
+  mutate(no_years = length(unique(YEAR))) %>%
+  filter(no_years >= 5)
+
+check <- data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  count(STATION_CODE) %>%
+  arrange(n)
+# check
+table(check$n)
+
+
+```
+
+
+#### Change some parameters in list of parameters to be analysed  
 
 ```{r}
 
@@ -543,7 +577,7 @@ result_1b %>%
 #| fig-width: 6
 #| fig-height: 12
 
-result_1b %>%
+gg <- result_1b %>%
   filter(LATIN_NAME == "Mytilus edulis") %>% 
   ggplot(aes(x = PARAM, y = Station_name, fill = Background1b)) +
   geom_tile() +
@@ -551,7 +585,26 @@ result_1b %>%
   easy_rotate_x_labels(angle = -45) +
   labs(title = "Background 1b, blue mussel", x = "Parameter", y = "Station")
 
+gg
+
 ```
+#### Stations  
+```{r}
+
+data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  group_by(STATION_CODE) %>%
+  summarize(n = n(), last_year = max(YEAR), .groups = "drop")
+
+```
+
+In 2007, the mussels were only insignificantly contaminated (Class I) except for the moderate 
+concentrations (Class II) found at six stations remote from point sources (43A Lyngneset in the 
+Langfjord (Arnøy, northwest of Skjervøy), 45A Sauhamneset in Revsbotn (Sørøysundet), 47A 
+Kifjordneset on the southwest coast of Nordkyn peninsula (Laksefjorden), 49A Norfjorden 
+(Syltefjord), 10A2 Skallneset (north side of Varangerfjord), and 11X Brashavn (south side of 
+Varangerfjord)). Five of these cases were due to cadmium and indicate a natural regional difference 
+(Appendix I and Appendix J). T
 
 ```{r}
 
