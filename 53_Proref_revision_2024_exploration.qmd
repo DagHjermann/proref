@@ -253,8 +253,13 @@ str(result)
 
 ### Raw data for analysis
 ```{r}
+
 data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds") %>%
   rename(YEAR = MYEAR)
+
+# As above
+df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
+
 ```
 
 #### Remove some stations  
@@ -274,7 +279,7 @@ check <- data_all2 %>%
 # check
 table(check$n)
 
-# Remove those with 4 years and less
+# Remove those with less than 5 years 
 data_all2 <- data_all2 %>%
   group_by(STATION_CODE) %>%
   mutate(no_years = length(unique(YEAR))) %>%
@@ -304,9 +309,8 @@ xtabs(~PARAM, df_series_sel %>% filter(grepl("PAH", PARAM)))
 df_series_sel <- df_series_sel %>%
   mutate(
     PARAM = case_when(
-      grepl("SCCP", PARAM) ~ "SCCP eksl. LOQ",
-      grepl("MCCP", PARAM) ~ "MCCP eksl. LOQ",
-      grepl("PAH", PARAM) ~ "PAH16_exloq",
+      PARAM %in% "SCCP" ~ "SCCP eksl. LOQ",
+      PARAM %in% "MCCP" ~ "MCCP eksl. LOQ",
       TRUE ~ PARAM
     )
   )
@@ -320,6 +324,9 @@ cat(hyphens, "Number of selected compounds (per species)\n", hyphens)
 df_series_sel$Species %>% table()
 
 years_backgr2 <- 1992:2022
+
+# "Safe" version of function (doesn't break the loop if there are errors)
+get_background_values_s <- safely(get_background_values)
 
 result_list <- map2(df_series_sel$PARAM, 
      df_series_sel$Species,
@@ -336,7 +343,7 @@ result <- map_dfr(result_list[ok], c("result", "result_one_line"))
 cat(hyphens, "Result\n", hyphens)
 str(result)
 
-writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
+# writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
 
 ```
 
@@ -414,10 +421,10 @@ Example: metals in cod
 ```{r}
 
 determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
-determ <- c("SCCP eksl. LOQ", "MCCP eksl. LOQ")
+# determ <- c("SCCP eksl. LOQ", "MCCP eksl. LOQ")
 species <- "Gadus morhua"
 
-pointcolors <- c("Background 1b and 2" = "blue4", 
+pointcolors <- c("Background 1b and 2" = "black", 
                "Background 1 and 2" = "purple", 
                "Background 2" = "green3", 
                "Other" = "orange")
@@ -429,6 +436,7 @@ gg <- ggplot(
   geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
   scale_fill_manual(values = pointcolors) +
   geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(4))+
+  scale_x_continuous(expand = c(0, 3)) +
   labs(title = "Concentrations", x = "Station ranking", y = "Concentration")
 
 # gg
@@ -442,7 +450,8 @@ ggplot(
   geom_line() +  
   geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
   scale_fill_manual(values = pointcolors) +
-  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(4))+
+  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(3)) +
+  scale_x_continuous(expand = c(0, 3)) +
   labs(title = "Concentrations ratio to first station", 
        x = "Station ranking", y = "Concentration ratio")
 
@@ -500,6 +509,7 @@ gg[[2]]
     
 ```
 
+### Summarize results  
 
 ```{r}
 
@@ -531,7 +541,7 @@ result_summ <- map_dfr(
 ```
 
 
-### 1b
+### Results for solution '1b'  
 
 ```{r}
 
@@ -557,6 +567,7 @@ result_1b <- result_detailed %>%
     PARAM = factor(PARAM, levels = param_levels)) 
 
 ```
+
 #### Plot cod  
 ```{r}
 
@@ -585,10 +596,15 @@ gg <- result_1b %>%
   easy_rotate_x_labels(angle = -45) +
   labs(title = "Background 1b, blue mussel", x = "Parameter", y = "Station")
 
+
+ggsave("Figures/53_background_stations_1b_mussel.png", gg, width = 6, height = 9.5, units = "in")
+
 gg
 
 ```
-#### Stations  
+
+#### Stations 1   
+
 ```{r}
 
 data_all2 %>%
@@ -598,13 +614,25 @@ data_all2 %>%
 
 ```
 
+### Stations 2  
+
 In 2007, the mussels were only insignificantly contaminated (Class I) except for the moderate 
 concentrations (Class II) found at six stations remote from point sources (43A Lyngneset in the 
 Langfjord (Arnøy, northwest of Skjervøy), 45A Sauhamneset in Revsbotn (Sørøysundet), 47A 
 Kifjordneset on the southwest coast of Nordkyn peninsula (Laksefjorden), 49A Norfjorden 
 (Syltefjord), 10A2 Skallneset (north side of Varangerfjord), and 11X Brashavn (south side of 
 Varangerfjord)). Five of these cases were due to cadmium and indicate a natural regional difference 
-(Appendix I and Appendix J). T
+(Appendix I and Appendix J). 
+
+```{r}
+
+readLines("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt", n = 3)
+df_stations_access <- readRDS("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt)
+
+df_stations_access <- readRDS("../../CEMP/CEMP_2022/Info/df_stations_access.rds")
+
+```
+
 
 ```{r}
 
