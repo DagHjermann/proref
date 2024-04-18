@@ -363,6 +363,16 @@ threshold_medianratio <- 2
 
 # Adding columns for background and last rank  
 
+# P > 0.1 limit:
+#   P_change1 = TRUE for the first station going over P > 0.1  
+#   P_sum1 = 0 for background stations, 1 for non-background  
+#   Background1 = background stations 
+#   Background1b = as 
+# P > 0.05 limit:
+#   P_change2 = TRUE for the first station going over P > 0.05  
+#   P_sum2 = 0 for background stations, 1 for non-background  
+
+
 result_detailed <- result_detailed %>% 
     # filter(PARAM %in% "CU" & LATIN_NAME %in% species) %>%   
     group_by(PARAM, LATIN_NAME, TISSUE_NAME) %>%
@@ -508,7 +518,55 @@ gg[[1]]
 gg[[2]]
     
 ```
+#### Plot 'median ratio', comparinf 1 and 1b  
 
+- I.e., using P < 0.10 as threshold, but comparing max median_ratio of 2   
+
+```{r}
+
+# 
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background1b %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1b"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background1b %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Backg = "Background 1b"))
+
+result_detailed_summ_all <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME, UNIT) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))
+
+gg <- map(
+  c("Gadus morhua", "Mytilus edulis"),
+  \(species)
+  ggplot(result_detailed_summ_all %>% filter(LATIN_NAME == species),
+         aes(x = n, y = Median_ratio, color = Background)) +
+  geom_point() + 
+  geom_text_repel(aes(label = PARAM), hjust = 0, nudge_x = 0.2, size = rel(3),
+                  max.overlaps = 5) +
+  labs(title = paste("Median ratio -", species),
+       x = "Number of background stations", y = "Max median ratio")
+)
+
+gg[[1]]
+# gg[[1]] + scale_y_log10()
+gg[[2]]
+    
+```
 ### Summarize results  
 
 ```{r}
@@ -537,6 +595,19 @@ result_summ <- map_dfr(
   arrange(PARAM, LATIN_NAME, Background) 
 
 # View(result_summ)
+
+```
+
+### Save  
+
+```{r}
+
+result_summ %>%
+  readr::write_csv("Data/53_result_summ.csv")
+
+result_summ %>%
+  filter(Background %in% "Background 1b") %>%
+  readr::write_csv("Data/53_result_summ_final.csv")
 
 ```
 
