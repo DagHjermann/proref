@@ -11,6 +11,7 @@
 #   find_set_differences
 #     find_set_difference
 #       get_stationdata_by_rankrange
+#         get_stationdata_by_rank
 # get_conc_percentiles  
 #   find_tissue
 #  . . . . . . . . . . . . .
@@ -189,6 +190,24 @@ get_lower_medians <- function(par, sp, ti, variable_name = "VALUE_WW", quantile 
 # str(x, 1)
 # head(x$data_medians_list[[1]])
 
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+#
+# Returns station data (medians) for data set number 'rank' (where ranked by increasing median)
+#
+# Input: the output from 'get_lower_medians', plus the rank that we want (i.e. 1 if we want the station with lowest values)
+# Output: a list of two elements:
+#   1) a character (name of the station)
+#   2) a data frame (annual medians for that station)
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+
+get_stationdata_by_rank <- function(object, rank){
+  i <- which(rank(object$median_per_station, ties.method = "first") == rank)
+  list(station = names(object$data_medians_list)[i],
+       result = object$data_medians_list[[i]])
+}
+
+# get_stationdata_by_rank(x, 1)
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
 #
@@ -341,12 +360,12 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
   df <- data[sel_analysis,] %>% as.data.frame()
   
   # Set less-thans to  a random number between 50 and 100% of the LOQ, using a uniform dsitribution)
-  sel <- df$FLAG1 %in% "<"
-  df$VALUE_WW[sel] <- runif(sum(sel), df$VALUE_WW[sel]*0.5, df$VALUE_WW[sel])
-  sel <- df$FLAG1 %in% "<" & !is.na(df$VALUE_DW)
-  df$VALUE_DW[sel] <- runif(sum(sel), df$VALUE_DW[sel]*0.5, df$VALUE_DW[sel])
-  sel <- df$FLAG1 %in% "<" & !is.na(df$VALUE_FB)
-  df$VALUE_FB[sel] <- runif(sum(sel), df$VALUE_FB[sel]*0.5, df$VALUE_FB[sel])
+  # sel <- df$FLAG1 %in% "<"
+  # df$VALUE_WW[sel] <- runif(sum(sel), df$VALUE_WW[sel]*0.5, df$VALUE_WW[sel])
+  # sel <- df$FLAG1 %in% "<" & !is.na(df$VALUE_DW)
+  # df$VALUE_DW[sel] <- runif(sum(sel), df$VALUE_DW[sel]*0.5, df$VALUE_DW[sel])
+  # sel <- df$FLAG1 %in% "<" & !is.na(df$VALUE_FB)
+  # df$VALUE_FB[sel] <- runif(sum(sel), df$VALUE_FB[sel]*0.5, df$VALUE_FB[sel])
   
   unit <- unique(df$UNIT)
   if (length(unit) == 0)
