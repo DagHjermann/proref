@@ -619,12 +619,12 @@ for (i in seq_len(nrow(result_summ))){
 
 ```{r}
 
-result_summ %>%
-  readr::write_csv("Data/53_result_summ.csv")
-
-result_summ %>%
-  filter(Background %in% "Background 1b") %>%
-  readr::write_csv("Data/53_result_summ_final.csv")
+# result_summ %>%
+#   readr::write_csv("Data/53_result_summ.csv")
+# 
+# result_summ %>%
+#   filter(Background %in% "Background 1b") %>%
+#   readr::write_csv("Data/53_result_summ_final.csv")
 
 ```
 
@@ -713,28 +713,13 @@ Varangerfjord)). Five of these cases were due to cadmium and indicate a natural 
 (Appendix I and Appendix J). 
 
 ```{r}
-
 readLines("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt", n = 3)
-df_stations_access <- readRDS("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt)
-
-df_stations_access <- readRDS("../../CEMP/CEMP_2022/Info/df_stations_access.rds")
+df_stations_access <- read.csv2("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt")
 
 ```
 
 
 ```{r}
-
-dput(sort(unique(result_1b$PARAM)))
-
-c("AG", "ANT", "AS", "CD", "CR", "CU", "HG", "NI", "PB", "ZN".
-  
-
-"BAA", "BAP", "BDE47", "BDE6S", "BDESS", "CB_S7", "DDEPP", "FLU", "HBCDA", "HCB", "HCHG",, "MCCP eksl. LOQ", 
-"NAP", "PAH16_exloq", "PFOA", "PFOS", "PFOSA", "SCCP eksl. LOQ", 
-"TBT", "4-N-NP", "4-N-OP", "4-T-NP", "4-T-OP", )
-
-
-
 
 result_1b_for_matrix <- result_detailed %>% 
   filter(!is.na(Background1b)) %>%
@@ -749,8 +734,6 @@ result_1b_for_matrix <- result_detailed %>%
   geom_tile() +
   easy_rotate_x_labels(angle = -45)
   
-
-
 ```
 
 
@@ -808,88 +791,4 @@ result_detailed %>%
 ```
 
 
-### Get summary result   
-
-#### original function  
-```{r}
-
-result_summ <- map_dfr(result_list[ok], c("result", "result_one_line"))  
-
-# str(result_list[[1]], 1)
-# str(result_list[[1]]$result, 1)
-
-```
-
-
-
-
-
-```{r}
-
-X$median_per_station
-
-```
-
-
-### Plot first vs. second station 
-```{r}
-# debugonce(find_set_difference)
-# diff <- find_set_difference(X, 1)
-# diff <- find_set_difference(X, 2)
-
-i <- 1:2
-ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
-
-```
-
-### Making a sorted station list
-```{r}
-############################################################################################
-#
-# Example of making a sorted station list (from least to most contaminanted) and make a "background station" plot 
-# Note: slightly outdated, the procedure now is a bit different
-#
-############################################################################################
-
-#
-# Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
-#
-years_backgr <- 2002:2016
-# debugonce(get_lower_medians)
-X <- get_lower_medians("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
-str(X, 1)
-# $ data_medians_list :List of 11
-# $ median_per_station: Named num [1:11] 0.05 0.11 0.045 0.045 0.1 0.07 0.046 0.059 0.0525 0.055 ...
-#  ..- attr(*, "names")= chr [1:11] "10B" "13B" "15B" "23B" ...
-
-
-
-#
-# Step 2:Find difference  between (example): station 1-3 vs. station 4, when stations are ordered 
-#   in increasing order by median
-#
-debugonce(find_set_difference)
-find_set_difference(X, 4)
-
-#
-# Step 3: Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)
-#
-find_set_differences(X)
-# This does the same but returns NULL if there is no data 
-differences_increasing_conc("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
-
-#
-# Step 4: Make plot of differences among stations in increasing order for one compound, species and tissue
-#
-plot_increase_determ("NI", species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
-
-#
-# Step 5: Make all plots for a group of chemicals; don't have to specify tissue; plot to file by default
-#
-determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
-plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
-                   determinantgroup = "metals", plot = "window")
-
-
-```
 
