@@ -1,27 +1,45 @@
 #
-# Functions used by 13d
-# Based on 13a except that it doesn't depend an 'data_all'
-# 
-# Depends on the script file '00_functions_ranklineplot.R'
+# Functions used by script 54  
 #
-# fact2char
-# fact2char_df
-# plot_perc                     - Function for plotting for a given par, sp, ti
-# plot_perc_save                - Function for plotting for a given par, sp, ti and saving plot to file
+#  . . . . . . . . . . . . .
+# Depenndency tree
+#  . . . . . . . . . . . . .
+# get_background_values
+#   find_tissue
+#   get_lower_medians
+#     get_rawdata
+#   find_set_differences
+#     find_set_difference
+#       get_stationdata_by_rankrange
+# get_conc_percentiles  
+#   find_tissue
+#  . . . . . . . . . . . . .
+
+# 
+# ** Utility **
+# fact2char                     - change factor to character
+# fact2char_df                  - change factor to character, for entire data frame
+# ** Functions for picking background stations **
 # get_rawdata                   - Picks raw data from the stations with enough data (at least 'min_years' with at least 'min_indiv_per_year' data per year)
 # get_lower_medians             - Picks the stations with enough data, calculates annual medians or those stations,
-# get_stationdata_by_rank       - Returns station data (medians) for data set number 'rank' (where ranked by increasing median)
 # get_stationdata_by_rankrange  - As get_stationdata_by_rank, but returns station data (medians) for several data sets
 # find_set_difference           - Find the statistical difference between 'data1' (data sets 1 to i-1) and data2 (data set i), where i = rank by median (low to high)
-# compare_groups                - Compare two groups of stations
 # find_set_differences          - Start with the cleanest station, add stations with increasing concentrations, test each station against the set of all cleanes ones
-# differences_increasing_conc   - Runs 'get_lower_medians' and feeds the result into 'find_set_differences'
-# plot_increase                 - Plots median of the newly added station, and the median of all cleaner stations
-# plot_increase_upper           - Plots the upper percentile of the newly added station, and the median of all cleaner stations
+# get_background_values         - Sets up data, finds correct tissue and  runs 'get_lower_medians' 'get_background_values' 
+# ** Functions for finding background levels from background stations **
+# get_conc_percentiles          - finding background levels from background stations
+                                 
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
+#
+# Utility functions ----
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 
 
 # Factor to character
-fact2char <- function(x) levels(x)[as.numeric(x)]
+fact2char <- function(x) {
+  levels(x)[as.numeric(x)]
+}
 
 # Factor to character for data frame (i.e. for all 
 fact2char_df <- function(df){
@@ -32,9 +50,35 @@ fact2char_df <- function(df){
   df
 }
 
+
+#
+# Find correct tissue
+#
+
+find_tissue <- function(determinant, species){
+  fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
+  if (species %in% fish_species & determinant %in% c("HG", "C/N")){
+    tissue <- "Muskel"
+  } else if (species %in% fish_species & determinant %in% c("BAP3O", "PA1O", "PYR1O")){
+    tissue <- "Bile"
+  } else if (species %in% fish_species & determinant %in% "ALAD"){
+    tissue <- "Blood"
+  } else if (species %in% fish_species & determinant != "HG"){
+    tissue <- "Lever"
+  } else if (species %in% c("Mytilus edulis", "Littorina littorea", "Nucella lapillus")){
+    tissue <- "Whole soft body"
+  } else {
+    stop ("species must be 'Gadus morhua', Platichthys flesus', 'Limanda limanda, 'Mytilus edulis', 'Nucella littorea' or 'Littorina littorea'")
+  }
+  tissue
+}
+# find_tissue("CD", species = "Gadus morhua")
+# find_tissue("HG", species = "Gadus morhua")
+# find_tissue("CD", species = "Mytilus edulis")
+
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 #
-# 2. Functions for picking background stations ----
+# Functions for picking background stations ----
 #    Principle: for a given compound, we sort stations from the cleanes to the dirtiest
 #       We then add stations one by one, comparing the median of the last station to the median of the 
 #       preceding stations.
@@ -264,49 +308,20 @@ find_set_differences <- function(object){
 # y <- find_set_differences(x)
 
 
-#
-# Find correct tissue
-#
-
-find_tissue <- function(determinant, species){
-  fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
-  if (species %in% fish_species & determinant %in% c("HG", "C/N")){
-    tissue <- "Muskel"
-  } else if (species %in% fish_species & determinant %in% c("BAP3O", "PA1O", "PYR1O")){
-    tissue <- "Bile"
-  } else if (species %in% fish_species & determinant %in% "ALAD"){
-    tissue <- "Blood"
-  } else if (species %in% fish_species & determinant != "HG"){
-    tissue <- "Lever"
-  } else if (species %in% c("Mytilus edulis", "Littorina littorea", "Nucella lapillus")){
-    tissue <- "Whole soft body"
-  } else {
-    stop ("species must be 'Gadus morhua', Platichthys flesus', 'Limanda limanda, 'Mytilus edulis', 'Nucella littorea' or 'Littorina littorea'")
-  }
-  tissue
-}
-# find_tissue("CD", species = "Gadus morhua")
-# find_tissue("HG", species = "Gadus morhua")
-# find_tissue("CD", species = "Mytilus edulis")
-
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
 #
-# Functions for finding background levels and compare last year's level ----
-#
-#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
-
-
-#
-# get_background_values - is based on get_background_stations
-#   - new version
-#     percentiles (for limits) is based on the full data
+# get_background_values 
+#   Sets up data, finds correct tissue and  runs 'get_lower_medians' 'get_background_values' 
+#   - new version: percentiles (for limits) is based on the full data
 #
 # Depends on  
 #   find_tissue
 #   get_lower_medians
 #   find_set_differences
 #   
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+
 get_background_values <- function(determinant, species, var_name, years_backgr = 1992:2016, 
                                   threshold_p = 0.10,
                                   data = subset(data_all, YEAR %in% years_backgr), ...){
@@ -398,6 +413,13 @@ if (FALSE){
   
   str(one_case, 1)
 }
+
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+#
+# Functions for finding background levels from background stations ----
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+
 
 get_conc_percentiles <- function(determinant,
                                  species,
