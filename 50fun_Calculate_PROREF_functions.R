@@ -1000,6 +1000,30 @@ if (FALSE){
   str(one_case, 1)
 }
 
+get_conc_percentiles <- function(determinant,
+                                 species,
+                                 stationstring, 
+                                 percentile = 0.95,
+                                 var_name = "VALUE_WW", 
+                                 data){
+  data <- as.data.frame(data)
+  tissue <- find_tissue(determinant = determinant, species = species)
+  sel_analysis <-  with(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & is.finite(data[,var_name]))
+  stations <- strsplit(stationstring, split = ", ")[[1]] %>% gsub(" ", "", ., fixed = TRUE)
+  sel_stations <-  with(data, STATION_CODE %in% stations)
+  df <- data[sel_analysis & sel_stations,]
+  quantile(df[[var_name]], probs = percentile)
+  }
+
+if (FALSE){
+  # debugonce(get_conc_percentiles)
+  get_conc_percentiles(determinant = "BDE47", 
+                       species = "Mytilus edulis", 
+                       stationstring = "98A2, 36A1", 
+                       data = subset(data_all2, YEAR %in% years_backgr2))
+  
+  
+}
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
 #

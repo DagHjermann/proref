@@ -367,7 +367,8 @@ threshold_medianratio <- 2
 #   P_change1 = TRUE for the first station going over P > 0.1  
 #   P_sum1 = 0 for background stations, 1 for non-background  
 #   Background1 = background stations 
-#   Background1b = as 
+#   Background1b = as Background1 but the ratio beteween stations medians is not allowed 
+#     to be above 2
 # P > 0.05 limit:
 #   P_change2 = TRUE for the first station going over P > 0.05  
 #   P_sum2 = 0 for background stations, 1 for non-background  
@@ -597,6 +598,22 @@ result_summ <- map_dfr(
 # View(result_summ)
 
 ```
+
+### Add the actual PROREF values  
+- takes 30-60 seconds 
+```{r}
+
+result_summ$PROREF <- NA
+for (i in seq_len(nrow(result_summ))){
+  result_summ$PROREF[i] <- get_conc_percentiles(
+      determinant = result_summ$PARAM[i], 
+      species = result_summ$LATIN_NAME[i], 
+      stationstring = result_summ$Stations[i], 
+      data = subset(data_all2, YEAR %in% years_backgr2))
+}
+
+```
+
 
 ### Save  
 
