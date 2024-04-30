@@ -1,0 +1,895 @@
+---
+title: "53_Proref_revision_2024"
+format: html
+---
+
+## Packages, loading functions
+
+```{r}
+library(data.table)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(forcats)
+library(ggeasy)
+library(tidyr)
+library(ggrepel)
+
+# install.packages("xlsx")
+# library(xlsx)
+
+source("50fun_Calculate_PROREF_functions.R")
+
+df_old_result <- readxl::read_excel("data/Proref_2022_version1.xlsx")
+df_stations <- readxl::read_excel("data/Kartbase_edit.xlsx")
+
+# For printout:
+hyphens <- "-------------------------------------------------------------------------------\n"
+
+```
+
+
+## Data
+```{r}
+
+# files have been copied from C:\Users\DHJ\OneDrive - NIVA\Documents\seksjon 212\Milkys 2017\Analyse\Data
+
+# load(file = "Milkys_2017/Data/12d_data_all.RData")
+load(file = "Input_data/2017/12d_data_all.RData")
+# data_all from 12b4, this is the one to use for raw data
+
+# load(file = "Milkys_2017/Data/12b3_data_all_2015sp.RData")        
+load(file = "Input_data/2017/12b3_data_all_2015sp.RData")        
+# data_all_2015sp - the better length-adjusted data
+```
+
+
+
+### Some corrections
+```{r}
+
+# Delete lines with no values
+sel <- is.na(data_all$VALUE_WW); sum(sel)
+data_all <- data_all[!sel,]
+
+# Some adjusted HBCDD values with no unit, set them to UG (why did this happen?)
+sel <- with(data_all, PARAM %in% "HBCDD")
+# table(addNA(data_all$UNIT[sel]))
+# data_all$UNIT[sel] <- "UG_P_KG"
+
+# TISSUE_NAME for blue mussel
+sel <- with(data_all, LATIN_NAME == "Mytilus edulis" & TISSUE_NAME != "Whole soft body")
+data_all$TISSUE_NAME[sel] <- "Whole soft body"
+
+sel <- with(data_all, YEAR < 1981); sum(sel)
+data_all <- data_all[!sel,]
+
+nrow(data_all) # 319179
+
+# sl? sammen  227G1 +  227G2 - already done
+# xtabs(~STATION_CODE + YEAR + LATIN_NAME, subset(data_all, substr(STATION_CODE,1,4) %in% "227G"))
+```
+
+
+### Define years  
+```{r}
+years_backgr <- 2002:2016
+```
+
+
+## Process, step by step
+### Step 1: get_lower_medians  
+
+- get data series for one substance and all stations  
+- Result: object with medians (per year) and medians (per station)  
+
+```{r}
+# debugonce(get_lower_medians)
+X <- get_lower_medians("DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+                       data = subset(data_all, YEAR %in% years_backgr))
+# X <- get_lower_medians("PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+cat(hyphens, "Result object \n", hyphens)
+str(X, 1)
+cat(hyphens, "'data_medians_list' for '10B'\n", hyphens)
+str(X$data_medians_list[["10B"]])
+cat(hyphens, "'median_per_station' (here, sorted)\n", hyphens)
+sort(X$median_per_station)
+
+```
+### find_set_difference  
+```{r}
+
+i <- 3
+
+# debugonce(find_set_difference)
+a_single_test <- find_set_difference(X, i)
+
+cat(hyphens, "Result object, testing station no. 1 -", i-1, "vs. station no.", i, "\n", hyphens)
+str(a_single_test)
+
+```
+
+
+### find_set_differences  
+
+- Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)  
+
+```{r}
+
+# debugonce(find_set_differences)
+diff <- find_set_differences(X) 
+
+```
+
+### differences_increasing_conc  
+
+- 'differences_increasing_conc' is just 'get_lower_medians' followed by 'find_set_differences'  
+- this function is used in 'plot_increase'  
+
+```{r}
+
+diff <- differences_increasing_conc(
+  "DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+  data = subset(data_all, YEAR %in% years_backgr))
+
+# differences_increasing_conc(
+#   "PFOSA", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", 
+#   data = subset(data_all, YEAR %in% years_backgr))
+
+```
+
+### Plot first station   
+
+- with percent over LOQ shown  
+
+```{r}
+
+i <- 1
+diff$Station[i]
+ggplot(X$data_medians_list[[diff$Station[i]]] %>% mutate(perc_over_loq = round(100*n_loq/n,0)), 
+       aes(x = STATION_CODE, y = median)) + 
+  geom_point() +
+  geom_text(aes(label = perc_over_loq), hjust = 0, nudge_x = 0.05)
+
+# ggplot(X$data_medians_list[diff$Station[i:(i+1)]], aes(x = STATION_CODE, y = median)) + geom_point()
+```
+### Plot all stations  
+
+- with percent over LOQ shown  
+
+```{r}
+
+ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))), 
+       aes(Station, Median2)) +
+  geom_point() +
+  geom_text(aes(label = Perc_over_loq2), hjust = 0, nudge_x = 0.1)
+
+```
+### Plot all stations with 'median ratio'   
+
+- 'median ratio' is the ratio between the median of a station and the median of the first station  
+
+```{r}
+
+ggplot(diff %>% mutate(Station = fct_inorder(factor(Station))), 
+       aes(Station, Median2)) +
+  geom_point() +
+  geom_text(aes(label = round(Median_ratio, 1)), hjust = 0, nudge_x = 0.1)
+
+```
+
+### plot_increase  
+
+* 'plot_increase' is 'differences_increasing_conc' followed by plotting  
+* returns the rsult of 'differences_increasing_conc'  
+
+```{r}
+
+# DDEPP", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW"
+
+diff <- plot_increase(par = "DDEPP", sp = "Gadus morhua", ti = "Lever", variable_name = "VALUE_WW",
+              data = subset(data_all, YEAR %in% years_backgr))  
+
+diff <- plot_increase(par = "CB28", sp = "Mytilus edulis", ti = "Whole soft body", variable_name = "VALUE_WW",
+                      min_indiv_per_year = 2, 
+                      data = subset(data_all, YEAR %in% years_backgr))  
+
+
+# debugonce(plot_increase)
+# debugonce(differences_increasing_conc)
+# debugonce(get_lower_medians)
+
+```
+
+### get_background_values 
+
+- like 'differences_increasing_conc', 'get_background_values' is 'get_lower_medians' 
+followed by 'find_set_differences'  
+- but before that it also sets 'min_indiv_per_year' and tissue based on determinant (substance) and species   
+```{r}
+
+# debugonce(get_background_values)
+one_case <- get_background_values(determinant = "DDEPP", species = "Gadus morhua", var_name = "VALUE_WW", 
+                              years_backgr = 1992:2016,
+                              data = subset(data_all, YEAR %in% years_backgr))  
+
+str(one_case, 1)
+
+```
+
+### get all selected background values   
+
+
+
+```{r}
+
+# "Safe" version of function (doesn't break the loop if there are errors)
+get_background_values_s <- safely(get_background_values)
+
+df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
+
+cat(hyphens, "Number of selected compounds (per species)\n", hyphens)  
+df_series_sel$Species %>% table()
+
+result_list <- map2(
+  df_series_sel$PARAM, 
+  df_series_sel$Species,
+     \(x,y) get_background_values_s(determinant = x, species = y, var_name = "VALUE_WW", 
+                              years_backgr = 1992:2016,
+                              data = subset(data_all, YEAR %in% years_backgr))
+     )
+
+ok <- map(result_list, "error") %>% map_lgl(is.null)
+cat(hyphens, "Number of successful compound*species\n", hyphens)
+cat(sum(ok), "out of", length(ok), "\n")
+
+result <- map_dfr(result_list[ok], c("result", "result_one_line"))  
+cat(hyphens, "Result\n", hyphens)
+str(result)
+
+```
+
+## Data through 2022  
+
+### Raw data for analysis
+```{r}
+
+data_all2 <- readRDS("Input_data/2022/105_data_with_uncertainty_2023-09-12.rds") %>%
+  rename(YEAR = MYEAR)
+
+# As above
+df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
+
+```
+
+#### Remove some stations  
+```{r}
+
+# "B" mussel stations (industry data, from Langøya?)
+xtabs(~STATION_CODE, data_all2 %>% filter(substr(STATION_CODE, 1, 1) == "B"))
+
+data_all2 <- data_all2 %>%
+  filter(!substr(STATION_CODE, 1, 1) == "B")
+
+# Atations used for very few years
+check <- data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  count(STATION_CODE) %>%
+  arrange(n)
+# check
+table(check$n)
+
+# Remove those with less than 5 years 
+data_all2 <- data_all2 %>%
+  group_by(STATION_CODE) %>%
+  mutate(no_years = length(unique(YEAR))) %>%
+  filter(no_years >= 5)
+
+check <- data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  count(STATION_CODE) %>%
+  arrange(n)
+# check
+table(check$n)
+
+
+```
+
+
+#### Change some parameters in list of parameters to be analysed  
+
+```{r}
+
+xtabs(~PARAM, data_all2 %>% filter(grepl("SCCP", PARAM)))
+xtabs(~PARAM, df_series_sel %>% filter(grepl("SCCP", PARAM)))
+
+xtabs(~PARAM, data_all2 %>% filter(grepl("PAH", PARAM)))
+xtabs(~PARAM, df_series_sel %>% filter(grepl("PAH", PARAM)))
+
+df_series_sel <- df_series_sel %>%
+  mutate(
+    PARAM = case_when(
+      PARAM %in% "SCCP" ~ "SCCP eksl. LOQ",
+      PARAM %in% "MCCP" ~ "MCCP eksl. LOQ",
+      TRUE ~ PARAM
+    )
+  )
+
+```
+### Run analysis for data through 2022  
+
+```{r}
+
+cat(hyphens, "Number of selected compounds (per species)\n", hyphens)  
+df_series_sel$Species %>% table()
+
+years_backgr2 <- 1992:2022
+
+# "Safe" version of function (doesn't break the loop if there are errors)
+get_background_values_s <- safely(get_background_values)
+
+result_list <- map2(df_series_sel$PARAM, 
+     df_series_sel$Species,
+     \(x,y) get_background_values_s(determinant = x, species = y, var_name = "VALUE_WW", 
+                              years_backgr = 1992:2022,
+                              data = subset(data_all2, YEAR %in% years_backgr2))
+     )
+
+ok <- map(result_list, "error") %>% map_lgl(is.null)
+cat(hyphens, "Number of successful compound*species\n", hyphens)
+cat(sum(ok), "out of", length(ok), "\n")
+
+result <- map_dfr(result_list[ok], c("result", "result_one_line"))  
+cat(hyphens, "Result\n", hyphens)
+str(result)
+
+# writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
+
+```
+
+### Get detailed results  
+
+```{r}
+
+# str(result_list[[1]]$result, 1)
+
+result_detailed <- map_dfr(result_list[ok], c("result", "differences"))  
+cat(hyphens, "Detailed result\n", hyphens)
+str(result_detailed)
+
+threshold_p1 <- 0.10
+threshold_p2 <- 0.05
+threshold_medianratio <- 2
+
+# Adding columns for background and last rank  
+
+# P > 0.1 limit:
+#   P_change1 = TRUE for the first station going over P > 0.1  
+#   P_sum1 = 0 for background stations, 1 for non-background  
+#   Background1 = background stations 
+#   Background1b = as Background1 but the ratio beteween stations medians is not allowed 
+#     to be above 2
+# P > 0.05 limit:
+#   P_change2 = TRUE for the first station going over P > 0.05  
+#   P_sum2 = 0 for background stations, 1 for non-background  
+
+
+result_detailed <- result_detailed %>% 
+    # filter(PARAM %in% "CU" & LATIN_NAME %in% species) %>%   
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME) %>%
+    mutate(
+      P_round = round(P, 3),       # just for more easily readable output
+      P_prev = lag(P_round),        # previous P value
+      P_change1 = case_when(
+        Rank == 1 ~ FALSE,
+        TRUE ~ (P < threshold_p1) & (P_prev >= threshold_p1)), # change in P value
+      P_cum1 = cumsum(P_change1), # cumulative change
+      P_change2 = case_when(
+        Rank == 1 ~ FALSE,
+        TRUE ~ (P < threshold_p2) & (P_prev >= threshold_p2)), # change in P value
+      P_cum2 = cumsum(P_change2), # cumulative change
+      Background1 = case_when(
+        P_cum1 == 0 ~ "Background",
+        TRUE ~ "Other"),
+      Background1b = case_when(
+        P_cum1 == 0 & Median_ratio <= threshold_medianratio ~ "Background",
+        TRUE ~ "Other"),
+      Background2 = case_when(
+        P_cum2 == 0 ~ "Background",
+        TRUE ~ "Other"),
+      Background = case_when(
+        Background1b == "Background" ~ "Background 1b and 2",
+        Background1 == "Background" ~ "Background 1 and 2",
+        Background2 == "Background" ~ "Background 2",
+        TRUE ~ "Other"),
+      # This is used only for adding PARAM label to the last station
+      #   in plots:
+      Last_rank = (Rank == max(Rank))
+      ) %>% 
+  ungroup() %>%
+    mutate(
+      Line_label = case_when(
+        Last_rank ~ PARAM,
+        TRUE ~ NA)
+    ) #%>%
+  #select(-P_prev, -P_change1, -P_cum1, -P_change2, -P_cum2, -Last_rank)
+
+```
+
+#### Table check 
+
+```{r}
+
+xtabs(~Background, result_detailed)
+
+```
+
+
+#### Plotting 'result_detailed'  
+
+Example: metals in cod  
+
+```{r}
+
+determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+# determ <- c("SCCP eksl. LOQ", "MCCP eksl. LOQ")
+species <- "Gadus morhua"
+
+pointcolors <- c("Background 1b and 2" = "black", 
+               "Background 1 and 2" = "purple", 
+               "Background 2" = "green3", 
+               "Other" = "orange")
+
+gg <- ggplot(
+  result_detailed %>% filter(PARAM %in% determ & LATIN_NAME %in% species), 
+  aes(x = Rank, y = Median2, group = PARAM)) +
+  geom_line() +  
+  geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
+  scale_fill_manual(values = pointcolors) +
+  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(4))+
+  scale_x_continuous(expand = c(0, 3)) +
+  labs(title = "Concentrations", x = "Station ranking", y = "Concentration")
+
+# gg
+gg + scale_y_log10()
+
+
+
+ggplot(
+  result_detailed %>% filter(PARAM %in% determ & LATIN_NAME %in% species), 
+  aes(x = Rank, y = Median_ratio, group = PARAM)) +
+  geom_line() +  
+  geom_point(aes(fill = Background), pch = 21, size = rel(2)) +
+  scale_fill_manual(values = pointcolors) +
+  geom_text(aes(label = Line_label), hjust = 0, nudge_x = 0.35, size = rel(3)) +
+  scale_x_continuous(expand = c(0, 3)) +
+  labs(title = "Concentrations ratio to first station", 
+       x = "Station ranking", y = "Concentration ratio")
+
+
+```
+
+#### Plot 'median ratio'
+
+- note: not including 'Background 1b' points  
+    - this is because the 'Background 1b' 
+
+```{r}
+
+# 
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 2"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Backg = "Background 2"))
+
+result_detailed_summ_all <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME, UNIT) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))
+
+gg <- map(
+  c("Gadus morhua", "Mytilus edulis"),
+  \(species)
+  ggplot(result_detailed_summ_all %>% filter(LATIN_NAME == species),
+         aes(x = n, y = Median_ratio, color = Background)) +
+  geom_point() + 
+  geom_text_repel(aes(label = PARAM), hjust = 0, nudge_x = 0.2, size = rel(3),
+                  max.overlaps = 5) +
+  labs(title = paste("Median ratio -", species),
+       x = "Number of background stations", y = "Max median ratio")
+)
+
+gg[[1]]
+# gg[[1]] + scale_y_log10()
+gg[[2]]
+    
+```
+#### Plot 'median ratio', comparinf 1 and 1b  
+
+- I.e., using P < 0.10 as threshold, but comparing max median_ratio of 2   
+
+```{r}
+
+# 
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background1b %in% "Background" & LATIN_NAME == "Gadus morhua") %>%
+      mutate(Background = "Background 1b"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background1b %in% "Background" & LATIN_NAME == "Mytilus edulis") %>%
+      mutate(Backg = "Background 1b"))
+
+result_detailed_summ_all <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME, TISSUE_NAME, UNIT) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))
+
+gg <- map(
+  c("Gadus morhua", "Mytilus edulis"),
+  \(species)
+  ggplot(result_detailed_summ_all %>% filter(LATIN_NAME == species),
+         aes(x = n, y = Median_ratio, color = Background)) +
+  geom_point() + 
+  geom_text_repel(aes(label = PARAM), hjust = 0, nudge_x = 0.2, size = rel(3),
+                  max.overlaps = 5) +
+  labs(title = paste("Median ratio -", species),
+       x = "Number of background stations", y = "Max median ratio")
+)
+
+gg[[1]]
+# gg[[1]] + scale_y_log10()
+gg[[2]]
+    
+```
+### Summarize results  
+
+```{r}
+
+resultlist <- list(
+    result_detailed %>% 
+      filter(Background1b %in% "Background") %>%
+      mutate(Background = "Background 1b"),
+    result_detailed %>% 
+      filter(Background1 %in% "Background") %>%
+      mutate(Background = "Background 1"),
+    result_detailed %>% 
+      filter(Background2 %in% "Background") %>%
+      mutate(Background = "Background 2"))
+
+result_summ <- map_dfr(
+  resultlist,
+  \(df) df  %>%
+    group_by(PARAM, LATIN_NAME) %>%
+    summarize(
+      Background = first(Background),
+      Stations = paste(Station, collapse = ", "),
+      Median_ratio = max(Median_ratio),
+      n = n(), .groups = "drop"
+    ))  %>%
+  arrange(PARAM, LATIN_NAME, Background) 
+
+# View(result_summ)
+
+```
+
+### Add the actual PROREF values  
+- takes 30-60 seconds 
+```{r}
+
+result_summ$PROREF <- NA
+for (i in seq_len(nrow(result_summ))){
+  result_summ$PROREF[i] <- get_conc_percentiles(
+      determinant = result_summ$PARAM[i], 
+      species = result_summ$LATIN_NAME[i], 
+      stationstring = result_summ$Stations[i], 
+      data = subset(data_all2, YEAR %in% years_backgr2))
+}
+
+```
+
+
+### Save  
+
+```{r}
+
+result_summ %>%
+  readr::write_csv("Data/53_result_summ.csv")
+
+result_summ %>%
+  filter(Background %in% "Background 1b") %>%
+  readr::write_csv("Data/53_result_summ_final.csv")
+
+```
+
+
+### Results for solution '1b'  
+
+```{r}
+
+# df_old_result %>%
+#   filter(LATIN_NAME == "Gadus morhua") %>% pull(PARAM)  %>% dput()
+# df_old_result %>%
+#   filter(LATIN_NAME == "Mytilus edulis") %>% pull(PARAM) %>% dput()
+
+param_levels <- c("HG", "CD", "CR", "CU", "NI", "PB", "AG", "ZN", "AS", 
+                  "CB_S7", "DDEPP", "HCHG", "HCB", 
+                  "NAP", "ANT", "FLU", "BAA", "BAP", "PAH16_exloq", 
+                  "4-N-NP", "4-N-OP", "4-T-NP", "4-T-OP", 
+                  "BDE47", "BDE6S", "HBCDA", "PFOA", "PFOS", "PFOSA", 
+                  "SCCP eksl. LOQ", "MCCP eksl. LOQ", "TBT")
+
+
+result_1b <- result_detailed %>% 
+  filter(!is.na(Background1b) & PARAM %in% df_old_result$PARAM) %>%
+  left_join(df_stations, by = c("Station" = "STATION_CODE"), relationship = "many-to-one") %>%
+  arrange(desc(Station_order)) %>%
+  mutate(
+    Station_name = fct_inorder(paste(Station, Station_short, sep = "_")), 
+    PARAM = factor(PARAM, levels = param_levels)) 
+
+```
+
+#### Plot cod  
+```{r}
+
+result_1b %>%
+  filter(LATIN_NAME == "Gadus morhua") %>% 
+  ggplot(aes(x = PARAM, y = Station_name, fill = Background1b)) +
+  geom_tile() +
+  scale_fill_manual(values = c("Background" = "blue4", "Other" = "orange")) +
+  easy_rotate_x_labels(angle = -45) +
+  labs(title = "Background 1b, cod", x = "Parameter", y = "Station")
+
+```
+
+#### Plot blue mussel
+
+```{r}
+
+#| fig-width: 6
+#| fig-height: 12
+
+gg <- result_1b %>%
+  filter(LATIN_NAME == "Mytilus edulis") %>% 
+  ggplot(aes(x = PARAM, y = Station_name, fill = Background1b)) +
+  geom_tile() +
+  scale_fill_manual(values = c("Background" = "blue4", "Other" = "orange")) +
+  easy_rotate_x_labels(angle = -45) +
+  labs(title = "Background 1b, blue mussel", x = "Parameter", y = "Station")
+
+
+ggsave("Figures/53_background_stations_1b_mussel.png", gg, width = 6, height = 9.5, units = "in")
+
+gg
+
+```
+
+#### Stations 1   
+
+```{r}
+
+data_all2 %>%
+  distinct(STATION_CODE, YEAR) %>%
+  group_by(STATION_CODE) %>%
+  summarize(n = n(), last_year = max(YEAR), .groups = "drop")
+
+```
+
+### Stations 2  
+
+In 2007, the mussels were only insignificantly contaminated (Class I) except for the moderate 
+concentrations (Class II) found at six stations remote from point sources (43A Lyngneset in the 
+Langfjord (Arnøy, northwest of Skjervøy), 45A Sauhamneset in Revsbotn (Sørøysundet), 47A 
+Kifjordneset on the southwest coast of Nordkyn peninsula (Laksefjorden), 49A Norfjorden 
+(Syltefjord), 10A2 Skallneset (north side of Varangerfjord), and 11X Brashavn (south side of 
+Varangerfjord)). Five of these cases were due to cadmium and indicate a natural regional difference 
+(Appendix I and Appendix J). 
+
+```{r}
+
+readLines("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt", n = 3)
+df_stations_access <- readRDS("../../CEMP/2016_Milkys/CEMP_POSITIONS.txt)
+
+df_stations_access <- readRDS("../../CEMP/CEMP_2022/Info/df_stations_access.rds")
+
+```
+
+
+```{r}
+
+dput(sort(unique(result_1b$PARAM)))
+
+c("AG", "ANT", "AS", "CD", "CR", "CU", "HG", "NI", "PB", "ZN".
+  
+
+"BAA", "BAP", "BDE47", "BDE6S", "BDESS", "CB_S7", "DDEPP", "FLU", "HBCDA", "HCB", "HCHG",, "MCCP eksl. LOQ", 
+"NAP", "PAH16_exloq", "PFOA", "PFOS", "PFOSA", "SCCP eksl. LOQ", 
+"TBT", "4-N-NP", "4-N-OP", "4-T-NP", "4-T-OP", )
+
+
+
+
+result_1b_for_matrix <- result_detailed %>% 
+  filter(!is.na(Background1b)) %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  distinct(Param_species, Station, Background1b)
+# apply(!is.na(result_1b_natrix), 2, sum)
+
+result_1b_for_matrix <- result_detailed %>% 
+  filter(!is.na(Background1b)) %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  ggplot(aes(x = PARAM, y = Station, fill = Background1b)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
+  
+
+
+```
+
+
+#### Plot matrix cod  
+```{r}
+
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  count(PARAM) %>%
+  arrange(desc(n))
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  count(Station) %>%
+  arrange(desc(n))
+
+result_detailed %>%
+  filter(LATIN_NAME == "Gadus morhua") %>%
+  add_count(PARAM, name = "count_param") %>%
+  add_count(Station, name = "count_station") %>%
+  filter(count_param >= 10) %>%
+  # filter(count_param >= 10 & count_station >= 11) %>%
+  ggplot(aes(x = PARAM, y = Station, fill = Background)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
+
+```
+
+
+```{r}
+
+result_matrix_all <- result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  count(Param_species, Station) %>%
+  pivot_wider(names_from = Param_species, values_from = n, values_fill = 0)
+
+
+
+result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  count(Param_species) %>%
+  arrange(desc(n))
+result_detailed %>%
+  count(Station) %>%
+  arrange(desc(n))
+
+result_detailed %>%
+  mutate(Param_species = paste(PARAM, LATIN_NAME, sep = "_")) %>%
+  add_count(Param_species, name = "count_param") %>%
+  add_count(Station, name = "count_station") %>%
+  filter(count_param >= 15 & count_station >= 10) %>%
+  ggplot(aes(x = Param_species, y = Station, fill = Background)) +
+  geom_tile() +
+  easy_rotate_x_labels(angle = -45)
+  
+```
+
+
+### Get summary result   
+
+#### original function  
+```{r}
+
+result_summ <- map_dfr(result_list[ok], c("result", "result_one_line"))  
+
+# str(result_list[[1]], 1)
+# str(result_list[[1]]$result, 1)
+
+```
+
+
+
+
+
+```{r}
+
+X$median_per_station
+
+```
+
+
+### Plot first vs. second station 
+```{r}
+# debugonce(find_set_difference)
+# diff <- find_set_difference(X, 1)
+# diff <- find_set_difference(X, 2)
+
+i <- 1:2
+ggplot(X$data_medians_list[[diff$Station[i]]], aes(x = STATION_CODE, y = median)) + geom_point()
+
+```
+
+### Making a sorted station list
+```{r}
+############################################################################################
+#
+# Example of making a sorted station list (from least to most contaminanted) and make a "background station" plot 
+# Note: slightly outdated, the procedure now is a bit different
+#
+############################################################################################
+
+#
+# Step 1: get data series (for several stations). Result: object with medians (per year) and medians (per station)
+#
+years_backgr <- 2002:2016
+# debugonce(get_lower_medians)
+X <- get_lower_medians("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+str(X, 1)
+# $ data_medians_list :List of 11
+# $ median_per_station: Named num [1:11] 0.05 0.11 0.045 0.045 0.1 0.07 0.046 0.059 0.0525 0.055 ...
+#  ..- attr(*, "names")= chr [1:11] "10B" "13B" "15B" "23B" ...
+
+
+
+#
+# Step 2:Find difference  between (example): station 1-3 vs. station 4, when stations are ordered 
+#   in increasing order by median
+#
+debugonce(find_set_difference)
+find_set_difference(X, 4)
+
+#
+# Step 3: Find all differences 1 vs. 2, 1-2 vs. 3, 1-3 vs. 4, etc. (stations in increasing order)
+#
+find_set_differences(X)
+# This does the same but returns NULL if there is no data 
+differences_increasing_conc("NI", sp = "Gadus morhua", ti = "Lever", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 4: Make plot of differences among stations in increasing order for one compound, species and tissue
+#
+plot_increase_determ("NI", species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr))
+
+#
+# Step 5: Make all plots for a group of chemicals; don't have to specify tissue; plot to file by default
+#
+determ <- c("CD", "PB", "HG", "AS", "CR", "ZN", "NI", "CO", "CU", "AG")
+plot_increase_mult(determ, species = "Gadus morhua", variable = "VALUE_WW", data = subset(data_all, YEAR %in% years_backgr), 
+                   determinantgroup = "metals", plot = "window")
+
+
+```
+
