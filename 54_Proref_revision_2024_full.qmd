@@ -3,6 +3,10 @@ title: "53_Proref_revision_2024"
 format: html
 ---
 
+This script runs the PROREF procedure for all stations, parameters and basises  
+- Three "stopping" rules are used (Background1, Background1b and Background2)  
+- The final results are for Background1 (all stations not being different at P < 0.10, and the ratio of concentration medians between the cleanest and dirties background station is not allowed to be above 2  
+
 ## Packages, loading functions
 
 ```{r}
@@ -189,6 +193,11 @@ str(result)
 
 ### Get detailed results  
 
+This results in a data frame with one row for every step in the analysis (each station added) and three boolean (TRUE/FALSE) variables:    
+- Background1 = TRUE for all stations not being different at P < 0.10  
+- Background1b = As Background1, but also the ratio beteween stations medians is not allowed to be above 2  
+- Background2 = TRUE for all stations not being different at P < 0.05       
+
 ```{r}
 
 # str(result_list[[1]]$result, 1)
@@ -260,7 +269,13 @@ result_detailed <- result_detailed %>%
 
 ```{r}
 
-saveRDS(result_detailed, "Data/54_result_detailed.rds")  
+if (FALSE){
+
+  saveRDS(result_detailed, "Data/54_result_detailed.rds")  
+
+  # result_detailed <- readRDS( "Data/54_result_detailed.rds")  
+
+}
 
 xtabs(~Background, result_detailed)
 
@@ -294,19 +309,9 @@ result_summ <- map_dfr(
     ))  %>%
   arrange(PARAM, LATIN_NAME, Background) 
 
-# Split PARAM (e.g. 'PFOS__WW') up back into
-# PARAM (e.g. 'PFOS') and BASIS (e.g. "WW)
-X <- strsplit(result_summ$PARAM, split = "__")
-result_summ$PARAM <- map_chr(X, 1)
-result_summ$Basis <- map_chr(X, 2)
-result_summ <- result_summ %>%
-  select(PARAM, Basis, everything())
-
-# View(result_summ)
-
 ```
 
-### Add the actual PROREF values  
+#### Add the actual PROREF values  
 - takes 30-60 seconds 
 ```{r}
 
@@ -329,17 +334,37 @@ t1-t0
 
 ```
 
+#### Recreate the original PARAM and BASIS  
+
+```{r}
+
+# Split PARAM (e.g. 'PFOS__WW') up back into
+# PARAM (e.g. 'PFOS') and BASIS (e.g. "WW)
+
+X <- strsplit(result_summ$PARAM, split = "__")
+result_summ$PARAM <- map_chr(X, 1)
+result_summ$Basis <- map_chr(X, 2)
+result_summ <- result_summ %>%
+  select(PARAM, Basis, everything())
+
+# View(result_summ)
+```
+
 
 ### Save  
 
 ```{r}
 
+if (FALSE){
+  
 result_summ %>%
   readr::write_csv("Data/54_result_summ.csv")
 
 result_summ %>%
   filter(Background %in% "Background 1b") %>%
   readr::write_csv("Data/54_result_summ_final.csv")
+
+}
 
 ```
 
