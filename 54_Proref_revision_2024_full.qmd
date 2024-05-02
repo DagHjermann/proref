@@ -312,7 +312,9 @@ result_summ <- map_dfr(
 ```
 
 #### Add the actual PROREF values  
-- takes 30-60 seconds 
+
+- takes 60 minutes 
+
 ```{r}
 
 t0 <- Sys.time()
