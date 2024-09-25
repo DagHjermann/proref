@@ -6,6 +6,7 @@ format: html
 This script runs the PROREF procedure for all stations, parameters and basises  
 - Three "stopping" rules are used (Background1, Background1b and Background2)  
 - The final results are for Background1 (all stations not being different at P < 0.10, and the ratio of concentration medians between the cleanest and dirties background station is not allowed to be above 2  
+- The whole script is a bit slow - it takes about two hours (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
 
 ## Packages, loading functions
 
@@ -18,6 +19,7 @@ library(forcats)
 library(ggeasy)
 library(tidyr)
 library(ggrepel)
+library(stringr)
 
 # install.packages("xlsx")
 # library(xlsx)
@@ -142,19 +144,21 @@ df_series_sel <- df_series_sel %>%
 # debugonce(get_background_values)
 
 test <- get_background_values(
-       determinant = "CD__WW", 
+       determinant = "HG__WW", 
        species = "Gadus morhua", 
        var_name = "Concentration", 
        years_backgr = 1992:2022,
        data = subset(data_all2, YEAR %in% years_backgr2))
 
-View(test$differences)     
+# View(test$differences)     
 
 ```
 
 ### Run analysis for data through 2022  
 
-```{r}
+* Ca. 1 hour  
+
+```{r, results='hide'}
 
 cat(hyphens, "Number of selected compounds (per species)\n", hyphens)  
 df_series_sel$Species %>% table()
@@ -177,7 +181,18 @@ result_list <- map(
        data = subset(data_all2, YEAR %in% years_backgr2))
      )
 t1 <- Sys.time()
+
+# writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
+
+```
+
+#### Summary  
+
+```{r}
+
+cat("Time used:\n")
 t1-t0
+cat("\n")
 
 ok <- map(result_list, "error") %>% map_lgl(is.null)
 cat(hyphens, "Number of successful compound*species\n", hyphens)
@@ -186,8 +201,6 @@ cat(sum(ok), "out of", length(ok), "\n")
 result <- map_dfr(result_list[ok], c("result", "result_one_line"))  
 cat(hyphens, "Result\n", hyphens)
 str(result)
-
-# writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
 
 ```
 
@@ -370,7 +383,6 @@ result_summ %>%
 
 ```
 
-```
 
 
 

@@ -29,7 +29,11 @@
 # get_background_values         - Sets up data, finds correct tissue and  runs 'get_lower_medians' 'get_background_values' 
 # ** Functions for finding background levels from background stations **
 # get_conc_percentiles          - finding background levels from background stations
-                                 
+
+
+library(stringr)
+
+
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 #
 # Utility functions ----
@@ -55,9 +59,14 @@ fact2char_df <- function(df){
 #
 # Find correct tissue
 #
+# 'before_underscores' is for use when determinants e.g. "HG__WW" not just "HG" 
+# - if 'before_underscores' is TRUE, it will 
 
-find_tissue <- function(determinant, species){
+find_tissue <- function(determinant, species, before_underscores = FALSE){
   fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
+  if (before_underscores){
+    determinant <- stringr::str_extract(determinant, "[^__]+")
+  }
   if (species %in% fish_species & determinant %in% c("HG", "C/N")){
     tissue <- "Muskel"
   } else if (species %in% fish_species & determinant %in% c("BAP3O", "PA1O", "PYR1O")){
@@ -355,7 +364,7 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
   } else if (species %in% c("Littorina littorea", "Nucella lapillus")){     # i.e., VDSI
     min_indiv_per_year = 1
   }
-  tissue <- find_tissue(determinant = determinant, species = species)
+  tissue <- find_tissue(determinant = determinant, species = species, before_underscores = TRUE)
   sel_analysis <-  with(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & is.finite(data[,var_name]))
   df <- data[sel_analysis,] %>% as.data.frame()
   
@@ -447,7 +456,7 @@ get_conc_percentiles <- function(determinant,
                                  var_name = "VALUE_WW", 
                                  data){
   data <- as.data.frame(data)
-  tissue <- find_tissue(determinant = determinant, species = species)
+  tissue <- find_tissue(determinant = determinant, species = species, before_underscores = TRUE)
   sel_analysis <-  with(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & is.finite(data[,var_name]))
   stations <- strsplit(stationstring, split = ", ")[[1]] %>% gsub(" ", "", ., fixed = TRUE)
   sel_stations <-  with(data, STATION_CODE %in% stations)
