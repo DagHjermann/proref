@@ -26,6 +26,12 @@ library(stringr)
 
 source("54fun_Calculate_PROREF_functions.R")
 
+# For parallell processing (coding not finished)
+# - see "Run analysis for data through 2022, parallel processing"
+# library(doParallel)
+# cl <- makeCluster(10)
+# registerDoParallel(cores = 10)
+
 years_backgr2 <- 1992:2022
 
 # For printout:
@@ -137,6 +143,63 @@ df_series_sel <- df_series_sel %>%
   )
 
 ```
+
+### LOQ levels and <LOQ frequency  
+
+```{r}
+
+loq_summary <- subset(data_all2, YEAR %in% years_backgr2) %>%
+  filter(Basis %in% "WW") %>%
+  group_by(PARAM, LATIN_NAME, TISSUE_NAME, YEAR) %>%
+  summarise(
+    N = n(),
+    N_under_LOQ = sum(FLAG1 %in% "<"),
+    Perc_under_LOQ = N_under_LOQ/N*100,
+    LOQ_median = median(Concentration[FLAG1 %in% "<"], na.rm = TRUE)
+  ) 
+
+# View(loq_summary)
+
+# "CB_S7__WW", 
+pars <- c("CB28__WW", "CB52__WW", "CB101__WW", "CB105__WW", "CB118__WW", "CB138__WW", 
+"CB153__WW", "CB180__WW")
+
+data_all2 %>% filter(Basis %in% "WW" & PARAM %in% pars) %>% distinct(PARAM) %>% pull(PARAM) %>% dput()
+
+ggplot(
+  loq_summary %>% filter(PARAM %in% pars & LATIN_NAME == "Gadus morhua" &
+                           TISSUE_NAME == "Lever"),
+  aes(YEAR, LOQ_median, color = PARAM)) +
+  geom_path() +
+  scale_y_log10() +
+  labs(title = "Cod, median LOQ")
+
+ggplot(
+  loq_summary %>% filter(PARAM %in% pars & LATIN_NAME == "Mytilus edulis" &
+                           TISSUE_NAME == "Whole soft body"),
+  aes(YEAR, LOQ_median, color = PARAM)) +
+  geom_path() +
+  scale_y_log10() +
+  labs(title = "Blue mussel, median LOQ")
+
+ggplot(
+  loq_summary %>% filter(PARAM %in% pars & LATIN_NAME == "Gadus morhua" &
+                           TISSUE_NAME == "Lever"),
+  aes(YEAR, Perc_under_LOQ, color = PARAM)) +
+  geom_path() +
+  labs(title = "Cod, percent < LOQ")
+
+ggplot(
+  loq_summary %>% filter(PARAM %in% pars & LATIN_NAME == "Mytilus edulis" &
+                           TISSUE_NAME == "Whole soft body"),
+  aes(YEAR, Perc_under_LOQ, color = PARAM)) +
+  geom_path() +
+  labs(title = "Blue mussel, percent < LOQ")
+
+```
+
+
+
 ### Run analysis, test  
 
 ```{r}
@@ -173,18 +236,22 @@ t0 <- Sys.time()
 # (not along all possible combinations of param and species)  
 result_list <- map(
      seq_len(nrow(df_series_sel)), 
-     \(i) get_background_values_s(
-       determinant = df_series_sel$PARAM[i], 
-       species = df_series_sel$Species[i], 
+     \(.x) get_background_values_s(
+       determinant = df_series_sel$PARAM[.x], 
+       species = df_series_sel$Species[.x], 
        var_name = "Concentration", 
        years_backgr = 1992:2022,
        data = subset(data_all2, YEAR %in% years_backgr2))
      )
 t1 <- Sys.time()
+t1-t0
+
+str(result_list[1:3], 2)
 
 # writexl::write_xlsx(result, "Data/Proref_2022_version1.xlsx")   
 
 ```
+
 
 #### Summary  
 
@@ -201,6 +268,29 @@ cat(sum(ok), "out of", length(ok), "\n")
 result <- map_dfr(result_list[ok], c("result", "result_one_line"))  
 cat(hyphens, "Result\n", hyphens)
 str(result)
+
+```
+### Run analysis for data through 2022, parallel processing
+
+```{r}
+
+# Test using 'foreach' package
+#
+# t0 <- Sys.time()
+# result_list2 <- foreach(i = 1:3, .packages = c("dplyr", "purrr")) %dopar% {
+#   source("54fun_Calculate_PROREF_functions.R")
+#   try(get_background_values(
+#     determinant = df_series_sel$PARAM[i],
+#     species = df_series_sel$Species[i],
+#     var_name = "Concentration",
+#     years_backgr = 1992:2022,
+#     data = subset(data_all2, YEAR %in% years_backgr2)))
+# }
+# t1 <- Sys.time()
+# t1-t0
+# 
+# str(result_list2, 2)
+
 
 ```
 
