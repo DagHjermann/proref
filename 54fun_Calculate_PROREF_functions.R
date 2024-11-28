@@ -284,6 +284,10 @@ find_set_difference <- function(object, i){
                          Variable = data1$medians$Variable[1],
                          Param = data1$medians$PARAM[1],
                          Species = data1$medians$Species[1],
+                         N_years = length(data2$medians$YEAR),
+                         Min_year = min(data2$medians$YEAR),
+                         Max_year = max(data2$medians$YEAR),
+                         Median_year = median(data2$medians$YEAR),
                          Median1 = median(data1$medians$median), Median2 = median(data2$medians$median), 
                          Max_reduced_data1 = max(data1$medians$median), Upper_quantile2 = max(data2$medians$median),
                          W = testresult$statistic, P = testresult$p.value,
@@ -297,6 +301,10 @@ find_set_difference <- function(object, i){
                          Variable = data2$medians$Variable[1],
                          Species = data2$medians$Species[1],
                          Param = data2$medians$PARAM[1],
+                         N_years = length(data2$medians$YEAR),
+                         Min_year = min(data2$medians$YEAR),
+                         Max_year = max(data2$medians$YEAR),
+                         Median_year = median(data2$medians$YEAR),
                          Median1 = NA, Median2 = median(data2$medians$median), 
                          Max_reduced_data1 = NA, Upper_quantile2 = max(data2$medians$median),
                          W = NA, P = NA,
@@ -410,6 +418,9 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Median_lowest = upper_perc[1], 
                          Median_ratio = df_diff$Median_ratio[i2],
                          CI90 = upper_CI[1], CI95 = upper_CI[2], Q90 = upper_perc[2], Q95 = upper_perc[3], Max = upper_perc[4], 
+                         Median_n_years = median(df_diff$N_years[1:i2]),
+                         Median_startyear = median(df_diff$Min_year[1:i2]),
+                         Median_endyear = median(df_diff$Max_year[1:i2]),
                          stringsAsFactors = FALSE)
   } else {
     result <- data.frame(PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, Variable = var_name, UNIT = unit,
@@ -419,6 +430,7 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          N_stations = NA,
                          N = NA,
                          Median_lowest = NA, Median_ratio = NA, Q90 = NA, Q95 = NA, Max = NA, 
+                         Median_n_years = NA, Median_startyear = NA, Median_endyear = NA,
                          stringsAsFactors = FALSE)
   }  
   df_diff <- df_diff %>%
