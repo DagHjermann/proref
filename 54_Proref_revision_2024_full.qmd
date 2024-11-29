@@ -372,6 +372,50 @@ xtabs(~Background, result_detailed)
 
 ```
 
+#### Plot detailed data - example    
+
+```{r}
+
+param <- "CU__WW"
+species <- "Mytilus edulis"
+
+result_sel <- result_detailed %>%
+  filter(PARAM == param & LATIN_NAME == species)
+
+# Background stations - here using 'Background1b'  (HARD-CODED) 
+result_sel %>%
+  filter(Background1b == "Background") %>%
+  pull(Station) %>%
+  paste(collapse = ", ")
+
+# Get medians (as a list)
+annualmedians_result <- get_lower_medians(par = param, 
+                                          sp = species, 
+                                          ti = find_tissue(param, species), 
+                                          data = as.data.frame(subset(data_all2, YEAR %in% 1992:2022)), 
+                                          variable_name = "Concentration", 
+                                          min_indiv_per_year = find_min_indiv_per_year(species))
+str(annualmedians_result, 1)
+# annualmedians$median_per_station
+
+# Combine medians to a data frame, and add the 'Background1b' column    
+# Note: specifying 'Background1b' as the background we use here (HARD-CODED)
+df_medians <- annualmedians_result$data_medians_list %>% 
+  bind_rows() %>%
+  rename(Station = STATION_CODE) %>%
+  left_join(result_sel %>% select(Station, Background1b),
+            by = join_by(Station), relationship = "many-to-one")
+
+ggplot(df_medians, aes(YEAR, median, group = Station, colour = Background1b)) +
+  geom_line()
+
+ggplot(df_medians %>% filter(Background1b == "Background"), 
+       aes(YEAR, median, colour = Station)) +
+  geom_line() +
+  geom_point()
+
+```
+
 
 ### Summarize results  
 
@@ -409,7 +453,7 @@ result_summ <- map_dfr(
 
 #### Add the actual PROREF values  
 
-- takes 37 minutes with 6 cores running in parallel  
+- takes 37 minutes with 4 cores running in parallel  
 
 ```{r}
 
