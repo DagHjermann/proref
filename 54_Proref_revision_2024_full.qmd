@@ -6,7 +6,7 @@ format: html
 This script runs the PROREF procedure for all stations, parameters and basises  
 - Three "stopping" rules are used (Background1, Background1b and Background2)  
 - The final results are for Background1 (all stations not being different at P < 0.10, and the ratio of concentration medians between the cleanest and dirties background station is not allowed to be above 2  
-- The whole script is a bit slow - it takes about two hours (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
+- The whole script is a bit slow - it takes about 1 hour 15 minutes (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
 
 ## Packages, loading functions
 
@@ -468,7 +468,7 @@ result_summ <- result_summ %>%
 
 #### Add the actual PROREF values  
 
-- takes 37 minutes with 4 cores running in parallel  
+- takes 36 minutes with 4 cores running in parallel  
 
 ```{r}
 
@@ -516,11 +516,11 @@ result_summ <- result_summ %>%
 if (FALSE){
   
 result_summ %>%
-  readr::write_csv("Data/54_result_summ_2024-11-27.csv")  # HARD-CODED
+  readr::write_csv("Data/54_result_summ_2024-11-29.csv")  # HARD-CODED
 
 result_summ %>%
   filter(Background %in% "Background 1b") %>%
-  readr::write_csv("Data/54_result_summ_final_2024-11-27.csv.csv")  # HARD-CODED
+  readr::write_csv("Data/54_result_summ_final_2024-11-29.csv.csv")  # HARD-CODED
 
 }
 
