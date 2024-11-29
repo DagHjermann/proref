@@ -343,6 +343,28 @@ find_set_differences <- function(object){
 
 # y <- find_set_differences(x)
 
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+#
+# get_min_indiv_per_year
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
+
+find_min_indiv_per_year <- function(species){
+  fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
+  if (species %in% fish_species){ 
+    min_indiv_per_year = 10
+  } else if (species %in% "Mytilus edulis"){
+    min_indiv_per_year = 2
+  } else if (species %in% c("Littorina littorea", "Nucella lapillus")){     # i.e., VDSI
+    min_indiv_per_year = 1
+  }
+  min_indiv_per_year
+}
+
+if (FALSE){
+  find_min_indiv_per_year("Gadus morhua")
+  find_min_indiv_per_year("Mytilus edulis")
+}
 
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
@@ -361,17 +383,8 @@ find_set_differences <- function(object){
 get_background_values <- function(determinant, species, var_name, years_backgr = 1992:2016, 
                                   threshold_p = 0.10,
                                   data = subset(data_all, YEAR %in% years_backgr), ...){
-  fish_species <- c("Gadus morhua", "Platichthys flesus", "Limanda limanda")
   data <- as.data.frame(data)
-  if (species %in% fish_species & determinant != "ALAD"){ 
-    min_indiv_per_year = 10
-  } else if (species %in% fish_species){ 
-    min_indiv_per_year = 10
-  } else if (species %in% "Mytilus edulis"){
-    min_indiv_per_year = 2
-  } else if (species %in% c("Littorina littorea", "Nucella lapillus")){     # i.e., VDSI
-    min_indiv_per_year = 1
-  }
+  min_indiv_per_year <- find_min_indiv_per_year(species)
   tissue <- find_tissue(determinant = determinant, species = species, before_underscores = TRUE)
   sel_analysis <-  with(data, PARAM %in% determinant & LATIN_NAME %in% species & TISSUE_NAME %in% tissue & is.finite(data[,var_name]))
   df <- data[sel_analysis,] %>% as.data.frame()
