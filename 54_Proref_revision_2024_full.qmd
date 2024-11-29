@@ -450,6 +450,21 @@ result_summ <- map_dfr(
 
 ```
 
+#### Add potential number of stations  
+
+```{r}
+
+result_potential_number_of_stations <- result_detailed %>%
+  count(PARAM, LATIN_NAME, name = "n_potential_stations")
+
+result_summ <- result_summ %>%
+  left_join(
+    result_potential_number_of_stations, 
+    by = join_by(PARAM, LATIN_NAME),
+    relationship = "many-to-one"
+  )
+
+```
 
 #### Add the actual PROREF values  
 
