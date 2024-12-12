@@ -18,6 +18,7 @@ library(ggplot2)
 library(forcats)
 library(ggeasy)
 library(tidyr)
+library(glue)
 library(ggrepel)
 library(stringr)
 # install.packages("furrr")
@@ -364,7 +365,7 @@ if (FALSE){
 
   saveRDS(result_detailed, "Data/54_result_detailed_2024-11-29.rds")  # HARD-CODED
 
-  # result_detailed <- readRDS( "Data/54_result_detailed.rds")  
+  # result_detailed <- readRDS( "Data/54_result_detailed_2024-11-29.rds")  
 
 }
 
@@ -397,6 +398,19 @@ annualmedians_result <- get_lower_medians(par = param,
                                           min_indiv_per_year = find_min_indiv_per_year(species))
 str(annualmedians_result, 1)
 # annualmedians$median_per_station
+
+ggplot(result_sel, aes(Rank, Median2)) +
+  geom_line() +
+  geom_point(aes(col = Background1b)) +
+  geom_text_repel(aes(label = glue("{Station} (P = {P_round})")), hjust = 0, 
+                  nudge_x = 0.5, point.padding = 0.2, box.padding = 0.25, direction = "y") +
+  # Line at 2x the cleanest station
+  geom_hline(aes(yintercept = 2*result_sel$Median2[1]), linetype = "dashed", colour = "brown") +
+  expand_limits(y = 0)
+
+ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
+  geom_segment(aes(col = Background1b)) +
+  expand_limits(y = 0)
 
 # Combine medians to a data frame, and add the 'Background1b' column    
 # Note: specifying 'Background1b' as the background we use here (HARD-CODED)
