@@ -124,6 +124,15 @@ table(check$n)
 
 
 ```
+#### Check CHR vs. krysen  
+
+```{r}
+
+data_all2 %>%
+  filter(PARAM %in% c("Krysen__WW", "CHR__WW", "BAP__WW")) %>%
+  xtabs(~YEAR + PARAM, .)
+
+```
 
 
 #### Change some parameters in list of parameters to be analysed  
@@ -141,6 +150,7 @@ df_series_sel <- df_series_sel %>%
     PARAM = case_when(
       PARAM %in% "SCCP" ~ "SCCP eksl. LOQ",
       PARAM %in% "MCCP" ~ "MCCP eksl. LOQ",
+      PARAM %in% "Krysen" ~ "CHR",
       TRUE ~ PARAM
     )
   )
