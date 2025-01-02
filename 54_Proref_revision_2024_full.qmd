@@ -76,20 +76,6 @@ data_temporary <- data_all2 %>%
 
 data_all2 <- data_temporary
 
-# Old:
-# df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
-# New: all combinations  
-df_series_sel <- data_all2 %>%
-  distinct(PARAM, LATIN_NAME, STATION_CODE) %>%
-  count(PARAM, LATIN_NAME) %>%
-  rename(Species = LATIN_NAME)
-
-# For testing 1 - just one parameter/species:
-# df_series_sel <- df_series_sel %>% 
-#   filter(PARAM == "CD__WW" & Species == "Gadus morhua")
-# For testing 2 - a few random parameter/species:
-# df_series_sel <- df_series_sel %>% sample_n(10)
-
 ```
 
 #### Remove some stations  
@@ -139,23 +125,59 @@ data_all2 %>%
 
 ```{r}
 
-xtabs(~PARAM, data_all2 %>% filter(grepl("SCCP", PARAM)))
-xtabs(~PARAM, df_series_sel %>% filter(grepl("SCCP", PARAM)))
-
-xtabs(~PARAM, data_all2 %>% filter(grepl("PAH", PARAM)))
-xtabs(~PARAM, df_series_sel %>% filter(grepl("PAH", PARAM)))
-
-df_series_sel <- df_series_sel %>%
+data_all2 <- data_all2 %>%
   mutate(
     PARAM = case_when(
-      PARAM %in% "SCCP" ~ "SCCP eksl. LOQ",
-      PARAM %in% "MCCP" ~ "MCCP eksl. LOQ",
-      PARAM %in% "Krysen" ~ "CHR",
+      grepl("SCCP__", PARAM) ~ sub("SCCP__", "SCCP eksl. LOQ__", PARAM),
+      grepl("MCCP__", PARAM) ~ sub("MCCP__", "MCCP eksl. LOQ__", PARAM),
+      grepl("Krysen__", PARAM) ~ sub("Krysen__", "CHR__", PARAM),
       TRUE ~ PARAM
     )
   )
 
 ```
+
+### Create df_series_sel  
+
+```{r}
+
+# Old:
+# df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
+# New: all combinations  
+df_series_sel <- data_all2 %>%
+  distinct(PARAM, LATIN_NAME, STATION_CODE) %>%
+  count(PARAM, LATIN_NAME) %>%
+  rename(Species = LATIN_NAME)
+
+# For testing 1 - just one parameter/species:
+# df_series_sel <- df_series_sel %>% 
+#   filter(PARAM == "CD__WW" & Species == "Gadus morhua")
+# For testing 2 - a few random parameter/species:
+# df_series_sel <- df_series_sel %>% sample_n(10)
+
+
+### Check parameters   
+
+do_check <- FALSE
+# do_check <- TRUE
+
+if (do_check){
+  
+  xtabs(~PARAM, data_all2 %>% filter(grepl("SCCP", PARAM)))
+  xtabs(~PARAM, df_series_sel %>% filter(grepl("SCCP", PARAM)))
+  
+  xtabs(~PARAM, data_all2 %>% filter(grepl("PAH", PARAM)))
+  xtabs(~PARAM, df_series_sel %>% filter(grepl("PAH", PARAM)))
+  
+  data_all2 %>%
+    filter(PARAM %in% c("Krysen__WW", "CHR__WW", "BAP__WW")) %>%
+    xtabs(~YEAR + PARAM, .)
+  
+}
+
+```
+
+
 
 ### LOQ levels and <LOQ frequency  
 
