@@ -35,7 +35,7 @@ source("54fun_Calculate_PROREF_functions.R")
 # cl <- makeCluster(10)
 # registerDoParallel(cores = 10)
 
-years_backgr2 <- 1992:2022
+years_backgr2 <- 2003:2022
 
 # For printout:
 hyphens <- "-------------------------------------------------------------------------------\n"
@@ -125,12 +125,17 @@ ggplot(
 
 # debugonce(get_background_values)
 
+data_all3 <- data_all2[
+  c("YEAR", "STATION_CODE", "LATIN_NAME", "TISSUE_NAME", "SAMPLE_NO2", 
+    "PARAM", "FLAG1", "Concentration", "UNIT")
+]
+
 test <- get_background_values(
        determinant = "HG__WWa", 
        species = "Gadus morhua", 
        var_name = "Concentration", 
-       years_backgr = 1992:2022,
-       data = subset(data_all2, YEAR %in% years_backgr2))
+       years_backgr = years_backgr2,
+       data = subset(data_all3, YEAR %in% years_backgr2))
 
 # View(test$differences)     
 # View(test$result_one_line)     
@@ -146,7 +151,10 @@ test <- get_background_values(
 cat(hyphens, "Number of selected compounds x basis (per species)\n", hyphens)  
 df_series_sel$Species %>% table()
 
-years_backgr2 <- 1992:2022
+# Decrease the number of columns to speed up parallel processing  
+data_all3 <- data_all2[
+  c("YEAR", "STATION_CODE", "LATIN_NAME", "TISSUE_NAME", "SAMPLE_NO2", 
+    "PARAM", "FLAG1", "Concentration", "UNIT")
 
 # "Safe" version of function (doesn't break the loop if there are errors)
 get_background_values_s <- safely(get_background_values)
@@ -162,8 +170,8 @@ result_list <- future_map(
        determinant = df_series_sel$PARAM[.x], 
        species = df_series_sel$Species[.x], 
        var_name = "Concentration", 
-       years_backgr = 1992:2022,
-       data = subset(data_all2, YEAR %in% years_backgr2))
+       years_backgr = years_backgr2,
+       data = subset(data_all3, YEAR %in% years_backgr2))
      )
 t1 <- Sys.time()
 t1-t0
