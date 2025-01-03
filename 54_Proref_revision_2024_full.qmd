@@ -65,7 +65,9 @@ df_series_sel <- readRDS("Data/54_data_2024.rds")
 
 ```{r}
 
-loq_summary <- subset(data_all2, YEAR %in% years_backgr2) %>%
+years_plot <- 1992:2022
+
+loq_summary <- subset(data_all2, YEAR %in% years_plot) %>%
   filter(Basis %in% "WW") %>%
   group_by(PARAM, LATIN_NAME, TISSUE_NAME, YEAR) %>%
   summarise(
