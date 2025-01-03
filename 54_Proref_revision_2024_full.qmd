@@ -441,16 +441,18 @@ result_summ <- result_summ %>%
 
 ```{r}
 
-if (FALSE){
-  
-result_summ %>%
-  readr::write_csv("Data/54_result_summ_2024-11-29.csv")  # HARD-CODED
+txt_years <- range(years_backgr2) %>% paste(collapse = "-")
+txt_timestamp <- lubridate::now() %>% substr(1, 16) %>% sub(" ", "-T", .) %>% sub(":", "", .)
 
+fn1 <- paste0("Data/54_result_summ_", txt_years, "_", timestamp, ".csv")
+result_summ %>%
+  readr::write_csv(fn1)  
+
+fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", timestamp, ".csv")
 result_summ %>%
   filter(Background %in% "Background 1b") %>%
-  readr::write_csv("Data/54_result_summ_final_2024-11-29.csv.csv")  # HARD-CODED
+  readr::write_csv(fn2)
 
-}
 
 ```
 
