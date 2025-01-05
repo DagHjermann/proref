@@ -451,7 +451,7 @@ result_summ <- result_summ %>%
 txt_years <- range(years_backgr2) %>% paste(collapse = "-")
 txt_timestamp <- lubridate::now() %>% substr(1, 16) %>% sub(" ", "-T", .) %>% sub(":", "", .)
 
-fn1 <- paste0("Data/54_result_summ_", txt_years, "_", timestamp, ".csv")
+fn1 <- paste0("Data/54_result_summ_", txt_years, "_", txt_timestamp, ".csv")
 result_summ %>%
   readr::write_csv(fn1)  
 
