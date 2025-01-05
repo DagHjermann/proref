@@ -284,15 +284,12 @@ result_detailed <- result_detailed %>%
 
 ```{r}
 
+txt_years <- range(years_backgr2) %>% paste(collapse = "-")
+txt_timestamp <- lubridate::now() %>% substr(1, 16) %>% sub(" ", "-T", .) %>% sub(":", "", .)
 
-if (FALSE){
-
-  saveRDS(result_detailed, "Data/54_result_detailed_2024-11-29.rds")  # HARD-CODED
-
-  # result_detailed <- readRDS( "Data/54_result_detailed_2024-11-29.rds")  
-
-}
-
+fn <- paste0("Data/54_result_detailed_", txt_years, "_", txt_timestamp, ".rds")
+saveRDS(result_detailed, fn) 
+        
 xtabs(~Background, result_detailed)
 
 ```
