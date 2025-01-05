@@ -76,6 +76,7 @@ table(check$n)
 data_all2 <- data_all2 %>%
   group_by(STATION_CODE) %>%
   mutate(no_years = length(unique(YEAR))) %>%
+  ungroup %>%             # otherwise, 'df_series_sel' below will end up with 30000 rows
   filter(no_years >= 5)
 
 check <- data_all2 %>%
@@ -118,7 +119,7 @@ data_all2 <- data_all2 %>%
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
 #
-# Create df_series_sel  
+# Create 'df_series_sel'----  
 #
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
 
@@ -127,7 +128,7 @@ data_all2 <- data_all2 %>%
 # df_series_sel <- readxl::read_excel("Info/Proref table - MS version 17.xlsx")
 # New: all combinations  
 df_series_sel <- data_all2 %>%
-  distinct(PARAM, LATIN_NAME, STATION_CODE) %>%
+  distinct(PARAM, LATIN_NAME, STATION_CODE) %>% 
   count(PARAM, LATIN_NAME) %>%
   rename(Species = LATIN_NAME)
 
