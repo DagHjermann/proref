@@ -154,7 +154,7 @@ df_series_sel$Species %>% table()
 # Decrease the number of columns to speed up parallel processing  
 data_all3 <- data_all2[
   c("YEAR", "STATION_CODE", "LATIN_NAME", "TISSUE_NAME", "SAMPLE_NO2", 
-    "PARAM", "FLAG1", "Concentration", "UNIT")
+    "PARAM", "FLAG1", "Concentration", "UNIT")]
 
 # "Safe" version of function (doesn't break the loop if there are errors)
 get_background_values_s <- safely(get_background_values)
@@ -458,7 +458,7 @@ fn1 <- paste0("Data/54_result_summ_", txt_years, "_", timestamp, ".csv")
 result_summ %>%
   readr::write_csv(fn1)  
 
-fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", timestamp, ".csv")
+fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", txt_timestamp, ".csv")
 result_summ %>%
   filter(Background %in% "Background 1b") %>%
   readr::write_csv(fn2)
