@@ -1,4 +1,9 @@
 
+#
+# Comparing 1992-2022 with 2003-2022
+#
+
+
 library(dplyr)
 library(ggplot2)
 library(forcats)
@@ -21,8 +26,90 @@ result_detailed <- bind_rows(
   mutate(Analysis = fct_inorder(Analysis))
 
 #
-# choose parameter and species ----
+# VARIOUS DATA/PLOTS ----
 #
+
+#
+# . find largest differences
+#
+
+result_diff <- result_detailed %>%
+  filter(Background1b %in% "Background") %>%
+  count(Analysis, PARAM, LATIN_NAME) %>%
+  tidyr::pivot_wider(names_from = Analysis, values_from = n) %>%
+  mutate(diff = `Original (1992-2022)` - `2003-2022`) %>%
+  arrange(diff)
+
+result_diff_summ <- result_diff %>%
+  count(`Original (1992-2022)`, `2003-2022`)
+
+ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `2003-2022`, fill = n)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  geom_text(
+    data = result_diff_summ %>% filter(n < 300), 
+    aes(label = n), color = "white", size = 3) +
+  geom_text(
+    data = result_diff_summ %>% filter(n >= 300), 
+    aes(label = n), color = "black", size = 3) +
+  labs(title = "Number of background stations per substance, 1992-2022 vs 2003-2022")
+
+table(result_diff$`Original (1992-2022)`, result_diff$diff)
+
+
+#
+# . find stations classified as background most/least often  
+#
+result_bystation <- result_detailed %>%
+  # filter(grepl("30", Station)) %>%
+  count(Analysis, LATIN_NAME, Station, Background1b) %>%
+  tidyr::pivot_wider(names_from = Background1b, values_from = n) %>%
+  mutate(fraction_background = Background/(Background + Other)) %>%
+  arrange(LATIN_NAME, Analysis, desc(fraction_background))
+
+result_bystation_mussel <- result_bystation %>%
+  filter(Analysis == "2003-2022" & LATIN_NAME == "Mytilus edulis") %>%
+  mutate(Station = fct_inorder(Station))
+
+
+ggplot(result_bystation, aes(Station))
+
+#
+# BBF etc.
+#
+
+data_all2 %>%
+  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
+  xtabs(~YEAR + PARAM, .)
+
+data_all2 %>%
+  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
+  xtabs(~YEAR + STATION_CODE, .)
+
+data_all2 %>%
+  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I131A", "30A")) %>%
+  xtabs(~YEAR + PARAM, .)
+
+data_all2 %>%
+  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I301", "I131A", "30A", "I969")) %>%
+  mutate(LOQ = ifelse(is.na(FLAG1), "Over LOQ", "Under LOQ")) %>%
+  ggplot(aes(YEAR, Concentration, shape = LOQ, colour = PARAM)) +
+  # geom_smooth(se = FALSE) +
+  geom_point() +
+  scale_shape_manual(values = c(19,6)) +
+  facet_wrap(vars(STATION_CODE))
+  
+
+
+
+#
+# FOR APP ----
+# 
+
+#
+# . for ui (choose parameter and species) ----
+#
+
 param <- "CU__WW"
 species_common <- "mussel"
 
@@ -33,7 +120,7 @@ if (species_common == "mussel"){
 }
 
 #
-# for server ----
+# . for server ----
 #
 result_sel <- result_detailed %>%
   filter(PARAM == param & LATIN_NAME == species)
@@ -77,9 +164,17 @@ df_medians <- annualmedians_result$data_medians_list %>%
             by = join_by(Station), relationship = "many-to-one")
 
 
+# Proref value (90th percentile)
+lookup <- result_detailed %>%
+  filter(Background1b %in% "Background") %>%
+  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) |>
+  tidyr::pivot_wider(names_from = Analysis, values_from = Background1b, values_fill = "x")
+
+# JOIN THIS TO data_all2 !
+
 
 #
-# plots ----
+# . for ui (comparison plots) ----
 #
 
 #
@@ -110,7 +205,7 @@ ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
   facet_wrap(vars(Analysis))
 
 #
-#  plot 3: plot of medians
+#  plot 3: plot of medians (just a single plot)
 #
 
 ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
@@ -127,5 +222,4 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
     values = c("TRUE" = 6, "FALSE" = 16)
   )
 
-  
 
