@@ -22,6 +22,7 @@ create_proref_plot <- function(data, data_proref){
   
   # If we have max 8 stations, use brewer Set1 palette, otherwise we stick 
   #   with the default palette
+  number_bg_stations <- table(data$Station_bg) %>% length()
   if (number_bg_stations <= 8){
     gg1 <- gg1 %>%
       scale_colour_brewer(palette = "Set1", na.value = "grey80")
