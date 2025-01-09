@@ -166,14 +166,6 @@ data_medians_sel <- data_sel %>%
   ) %>%
   arrange(rev(Background))
 
-# Combine medians to a data frame, and add the 'Background1b' column    
-# Note: specifying 'Background1b' as the background we use here (HARD-CODED)
-df_medians <- annualmedians_result$data_medians_list %>% 
-  bind_rows() %>%
-  rename(Station = STATION_CODE) %>%
-  left_join(result_sel %>% select(Station, Background1b),
-            by = join_by(Station), relationship = "many-to-one")
-
 
 #
 # .-- raw data and proref value (90th percentile)----
