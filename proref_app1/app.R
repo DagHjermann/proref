@@ -171,6 +171,7 @@ server <- function(input, output, session) {
     result_sel <- selected_data()$result_sel %>%
       filter(Rank <= input$max_rank)
     line_2x_cleanest <- selected_data()$line_2x_cleanest
+    data_proref <- selected_data()$data_proref
     
     if (nrow(result_sel) == 0) return(NULL)
     
@@ -182,9 +183,16 @@ server <- function(input, output, session) {
                       point.padding = 0.2, box.padding = 0.25, 
                       direction = "y") +
       geom_hline(data = line_2x_cleanest, aes(yintercept = Median2), 
-                 linetype = "dashed", colour = "brown") +
+                 linetype = "dashed", colour = "blue3") +
+      geom_hline(
+        data = data_proref, aes(yintercept = PROREF), 
+        colour = "red", linetype = "dashed") +
+      geom_text(
+        data = data_proref, aes(x = -Inf, y = Inf, label = paste("PROREF =", PROREF)), 
+        colour = "red", hjust = -0.1, vjust = 1.5) +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis))
+      facet_wrap(vars(Analysis)) +
+      labs(subtitle = "Red line = PROREF, blue line = 2x cleanest station")
   })
   
   # Plot 2: Time range plot
