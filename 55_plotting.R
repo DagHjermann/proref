@@ -97,7 +97,8 @@ data_all2 %>%
   # geom_smooth(se = FALSE) +
   geom_point() +
   scale_shape_manual(values = c(19,6)) +
-  facet_wrap(vars(STATION_CODE))
+  facet_wrap(vars(STATION_CODE)) +
+  theme_bw()
   
 
 
