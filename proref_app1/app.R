@@ -24,7 +24,6 @@ result_detailed <- bind_rows(
 ) %>%
   mutate(Analysis = fct_inorder(Analysis))
 
-
 #
 # Raw data with 'Background' classification   
 #
@@ -46,6 +45,14 @@ data_all_backgr <- data_all2 %>%
   mutate(LOQ = case_when(
     is.na(FLAG1) ~ "Over LOQ",
     TRUE ~ "Under LOQ"))
+
+#
+# Proref
+#
+data_proref <- data_all_backgr %>% 
+  filter(Background %in% "Background") %>%
+  group_by(Analysis, LATIN_NAME, PARAM) %>%
+  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
 
 
 #
@@ -123,14 +130,12 @@ server <- function(input, output, session) {
       filter(PARAM %in% input$param & LATIN_NAME == species)
     
     # update data_all_backgr_sel
-    data_all_backgr_sel <- data_all_backgr%>%
+    data_all_backgr_sel <- data_all_backgr %>%
       filter(PARAM %in% input$param & LATIN_NAME %in% species)
     
     # calculate proref
-    data_proref_sel <- data_all_backgr_sel %>% 
-      filter(Background %in% "Background") %>%
-      group_by(Analysis) %>%
-      summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
+    data_proref_sel <- data_proref %>%
+      filter(PARAM %in% input$param & LATIN_NAME %in% species)
     
     # For setting default y axis range
     max_bg = data_all_backgr_sel %>%
@@ -254,6 +259,7 @@ server <- function(input, output, session) {
     data_all_backgr_sel <- selected_data()$data_all_backgr_sel
     data_proref_sel <- selected_data()$data_proref_sel
     max_bg <- selected_data()$max_bg
+    # browser()
     gg_all <- create_proref_plot(data_all_backgr_sel, 
                                data_proref_sel)
     gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"),
