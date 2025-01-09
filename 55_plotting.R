@@ -194,7 +194,10 @@ data_all_backgr <- data_all2 %>%
       Background %in% "Other" ~ NA,
       Background %in% "Background" ~ Station)
   ) %>%
-  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg)
+  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
+  mutate(LOQ = case_when(
+    is.na(FLAG1) ~ "Over LOQ",
+    TRUE ~ "Under LOQ"))
 
 
 #
@@ -253,11 +256,7 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
 # Select data
 data_all_backgr_sel <- data_all_backgr %>%
   filter(PARAM == param, 
-         LATIN_NAME %in% species) %>%
-  mutate(LOQ = case_when(
-    is.na(FLAG1) ~ "Over LOQ",
-    TRUE ~ "Under LOQ")
-  )
+         LATIN_NAME %in% species)
 
 data_proref_sel <- data_all_backgr_sel %>% 
   filter(Background %in% "Background") %>%
