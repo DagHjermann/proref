@@ -12,7 +12,8 @@ library(ggrepel)
 #
 # data ----
 #
-data_all2 <- readRDS("Data/54_data_2024.rds")
+data_all2 <- readRDS("Data/54_data_2024.rds") %>%
+  select(STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1)
 df_series_sel <- readRDS("Data/54_dataseries_2024.rds")
 
 result_detailed1 <- readRDS("Data/54_result_detailed_2024-11-29.rds")
@@ -25,6 +26,44 @@ result_detailed <- bind_rows(
   bind_cols(data.frame(Analysis = result_txt2), result_detailed2)
 ) %>%
   mutate(Analysis = fct_inorder(Analysis))
+
+
+#
+# .-- raw data and proref value (90th percentile)----
+#
+# Proref value = 90th percentile 
+#
+
+lookup_background <- result_detailed %>%
+  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
+  rename(Background = Background1b)
+
+data_all_backgr <- data_all2 %>%
+  ungroup() %>%
+  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+  left_join(lookup_background, 
+            by = join_by(Station, LATIN_NAME, PARAM), 
+            relationship = "many-to-many") %>%
+  filter(!is.na(Background)) %>%
+  mutate(
+    Station_bg = case_when(
+      Background %in% "Other" ~ NA,
+      Background %in% "Background" ~ Station)
+  ) %>%
+  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
+  mutate(LOQ = case_when(
+    is.na(FLAG1) ~ "Over LOQ",
+    TRUE ~ "Under LOQ"))
+
+#
+# Proref
+#
+data_proref <- data_all_backgr %>% 
+  filter(Background %in% "Background") %>%
+  group_by(Analysis, LATIN_NAME, PARAM) %>%
+  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
+            .groups = "drop")
+
 
 #
 # VARIOUS DATA/PLOTS ----
@@ -251,10 +290,9 @@ data_all_backgr_sel <- data_all_backgr %>%
   filter(PARAM == param, 
          LATIN_NAME %in% species)
 
-data_proref_sel <- data_all_backgr_sel %>% 
-  filter(Background %in% "Background") %>%
-  group_by(Analysis) %>%
-  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
+data_proref_sel <- data_proref %>%
+  filter(PARAM == param, 
+         LATIN_NAME %in% species)
 
 # For setting default y axis range
 max_bg = data_all_backgr_sel %>%
