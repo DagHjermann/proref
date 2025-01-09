@@ -7,6 +7,7 @@
 library(dplyr)
 library(ggplot2)
 library(forcats)
+library(ggrepel)
 
 #
 # data ----
@@ -269,22 +270,21 @@ max_bg = data_all_backgr_sel %>%
   pull(Concentration) %>%
   max()
 
-number_bg_stations <- table(data_all_backgr_sel$Station_bg) %>% length()
-
-create_proref_plot <- function(data){
+create_proref_plot <- function(data, data_proref){
   gg1 <- ggplot(data, aes(YEAR, Concentration)) +
     geom_jitter(
       aes(color = Station_bg, size = Background, shape = LOQ), width = 0.2) +
     scale_size_manual(values = c("Other"=1, "Background"=2)) + 
     scale_shape_manual(values = c("Under LOQ" = 6, "Over LOQ" = 16)) +
     geom_hline(
-      data =data_proref_sel, aes(yintercept = PROREF), 
+      data = data_proref, aes(yintercept = PROREF), 
       colour = "red", linetype = "dashed") +
     facet_wrap(vars(Analysis), nrow = 1) +
     theme_bw()
   
   # If we have max 8 stations, use brewer Set1 palette, otherwise we stick 
   #   with the default palette
+  number_bg_stations <- table(data$Station_bg) %>% length()
   if (number_bg_stations <= 8){
     gg1 <- gg1 %>%
       scale_colour_brewer(palette = "Set1", na.value = "grey80")
@@ -302,8 +302,10 @@ gg2
 
 }
 
-gg_all <- create_proref_plot(data_all_backgr_sel)
-gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"))
+gg_all <- create_proref_plot(data_all_backgr_sel, 
+                             data_proref_sel)
+gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"),
+                            data_proref_sel)
 
 # Show all data
 gg_all
