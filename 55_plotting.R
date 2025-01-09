@@ -112,6 +112,7 @@ data_all2 %>%
 #
 
 param <- "CU__WW"
+param <- "CB105__WW"
 species_common <- "mussel"
 
 if (species_common == "mussel"){
@@ -123,13 +124,19 @@ if (species_common == "mussel"){
 #
 # . for server ----
 #
+
+#
+# .-- select data ---- 
+#
 result_sel <- result_detailed %>%
   filter(PARAM == param & LATIN_NAME == species)
 data_sel <- data_all2 %>%
   filter(PARAM == param & LATIN_NAME == species)
 
 
-# Stations 
+#
+# .-- stations----
+#
 bg1 <- result_sel %>%
   filter(Analysis == result_txt1, Background1b == "Background") %>%
   pull(Station) 
@@ -245,8 +252,12 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
 
 # Select data
 data_all_backgr_sel <- data_all_backgr %>%
-  filter(PARAM == "CU__WW", 
-         LATIN_NAME %in% "Mytilus edulis")
+  filter(PARAM == param, 
+         LATIN_NAME %in% species) %>%
+  mutate(LOQ = case_when(
+    is.na(FLAG1) ~ "Over LOQ",
+    TRUE ~ "Under LOQ")
+  )
 
 data_proref_sel <- data_all_backgr_sel %>% 
   filter(Background %in% "Background") %>%
@@ -259,30 +270,46 @@ max_bg = data_all_backgr_sel %>%
   pull(Concentration) %>%
   max()
 
-gg1 <- ggplot(data_all_backgr_sel, aes(YEAR, Concentration)) +
-  geom_jitter(
-    aes(color = Station_bg, size = Background), width = 0.2) +
-  scale_colour_brewer(palette = "Dark2", na.value = "grey80") + 
-  scale_size_manual(values = c("Other"=1, "Background"=2)) + 
-  geom_hline(
-    data =data_proref_sel, aes(yintercept = PROREF), 
-    colour = "red", linetype = "dashed") +
-  # geom_text(
-  #   data =data_proref_sel, aes(label = "PROREF", x = -Inf, y = PROREF), 
-  #   colour = "red", hjust = -0.1, vjust = -0.3) +
-  facet_wrap(vars(Analysis), nrow = 1) +
-  theme_bw()
+number_bg_stations <- table(data_all_backgr_sel$Station_bg) %>% length()
+
+create_proref_plot <- function(data){
+  gg1 <- ggplot(data, aes(YEAR, Concentration)) +
+    geom_jitter(
+      aes(color = Station_bg, size = Background, shape = LOQ), width = 0.2) +
+    scale_size_manual(values = c("Other"=1, "Background"=2)) + 
+    scale_shape_manual(values = c("Under LOQ" = 6, "Over LOQ" = 16)) +
+    geom_hline(
+      data =data_proref_sel, aes(yintercept = PROREF), 
+      colour = "red", linetype = "dashed") +
+    facet_wrap(vars(Analysis), nrow = 1) +
+    theme_bw()
+  
+  # If we have max 8 stations, use brewer Set1 palette, otherwise we stick 
+  #   with the default palette
+  if (number_bg_stations <= 8){
+    gg1 <- gg1 %>%
+      scale_colour_brewer(palette = "Set1", na.value = "grey80")
+  }
 
 # Add proref label
 proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
-gg <- gg1 +
+gg2 <- gg1 +
   geom_text(
-    data =data_proref_sel, aes(label = paste0("PROREF\n", PROREF), 
-                               x = proreflabel_x, y = PROREF), 
-    colour = "red", hjust = 0, vjust = 0.5)
+    data =data_proref_sel, aes(label = paste0("PROREF = ", PROREF), 
+                               x = proreflabel_x, y = +Inf), 
+    colour = "red", hjust = 0, vjust = 1.5)
+
+gg2
+
+}
+
+gg_all <- create_proref_plot(data_all_backgr_sel)
+gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"))
 
 # Show all data
-# gg
+gg_all
+# Show all data, restrict y axis to background station data
+gg_all + ylim(0, max_bg)
 # Show background station data
-gg + ylim(0, max_bg)
+gg_bg
 
