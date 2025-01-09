@@ -205,33 +205,6 @@ data_medians_sel <- data_sel %>%
   ) %>%
   arrange(rev(Background))
 
-
-#
-# .-- raw data and proref value (90th percentile)----
-#
-# Proref value = 90th percentile 
-#
-
-lookup_background <- result_detailed %>%
-  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
-  rename(Background = Background1b)
-
-data_all_backgr <- data_all2 %>%
-  ungroup() %>%
-  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
-  left_join(lookup_background, relationship = "many-to-many") %>%
-  filter(!is.na(Background)) %>%
-  mutate(
-    Station_bg = case_when(
-      Background %in% "Other" ~ NA,
-      Background %in% "Background" ~ Station)
-  ) %>%
-  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
-  mutate(LOQ = case_when(
-    is.na(FLAG1) ~ "Over LOQ",
-    TRUE ~ "Under LOQ"))
-
-
 #
 # . for ui (comparison plots) ----
 #
@@ -304,10 +277,10 @@ create_proref_plot <- function(data, data_proref){
   gg1 <- ggplot(data, aes(YEAR, Concentration)) +
     geom_jitter(
       aes(color = Station_bg, size = Background, shape = LOQ), width = 0.2) +
-    scale_size_manual(values = c("Other"=1, "Background"=2)) + 
+    scale_size_manual(values = c("Other"=1, "Background"=2)) +
     scale_shape_manual(values = c("Under LOQ" = 6, "Over LOQ" = 16)) +
     geom_hline(
-      data = data_proref, aes(yintercept = PROREF), 
+      data = data_proref, aes(yintercept = PROREF),
       colour = "red", linetype = "dashed") +
     facet_wrap(vars(Analysis), nrow = 1) +
     theme_bw()
@@ -316,19 +289,19 @@ create_proref_plot <- function(data, data_proref){
   #   with the default palette
   number_bg_stations <- table(data$Station_bg) %>% length()
   if (number_bg_stations <= 8){
-    gg1 <- gg1 %>%
+    gg1 <- gg1 +
       scale_colour_brewer(palette = "Set1", na.value = "grey80")
   }
 
-# Add proref label
-proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
-gg2 <- gg1 +
-  geom_text(
-    data =data_proref_sel, aes(label = paste0("PROREF = ", PROREF), 
-                               x = proreflabel_x, y = +Inf), 
-    colour = "red", hjust = 0, vjust = 1.5)
-
-gg2
+  # Add proref label
+  proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
+  gg2 <- gg1 +
+    geom_text(
+      data =data_proref_sel, aes(label = paste0("PROREF = ", PROREF),
+                                 x = proreflabel_x, y = +Inf),
+      colour = "red", hjust = 0, vjust = 1.5)
+  
+  gg2
 
 }
 
