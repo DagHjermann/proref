@@ -24,7 +24,7 @@ create_proref_plot <- function(data, data_proref){
   #   with the default palette
   number_bg_stations <- table(data$Station_bg) %>% length()
   if (number_bg_stations <= 8){
-    gg1 <- gg1 %>%
+    gg1 <- gg1 +
       scale_colour_brewer(palette = "Set1", na.value = "grey80")
   }
   
@@ -39,3 +39,4 @@ create_proref_plot <- function(data, data_proref){
   gg2
   
 }
+
