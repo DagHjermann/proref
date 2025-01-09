@@ -165,7 +165,7 @@ server <- function(input, output, session) {
   #         paste(unique(data$result_sel$PARAM), collapse = ", "))
   # })
   
-  # Plot 1: Algorithm plot
+  # Plot 1: Algorithm plot ----
   output$plot1 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel %>%
@@ -192,10 +192,15 @@ server <- function(input, output, session) {
         colour = "red", hjust = -0.1, vjust = 1.5) +
       expand_limits(y = 0) +
       facet_wrap(vars(Analysis)) +
-      labs(subtitle = "Red line = PROREF, blue line = 2x cleanest station")
+      labs(subtitle = "Red line = PROREF, blue line = 2x cleanest station") +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
+      )
   })
   
-  # Plot 2: Time range plot
+  # Plot 2: Time range plot ----
   output$plot2 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel
@@ -205,10 +210,15 @@ server <- function(input, output, session) {
     ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
       geom_segment(aes(col = Background1b)) +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis))
+      facet_wrap(vars(Analysis)) +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
+      )
   })
   
-  # Plot 3: Medians plot
+  # Plot 3: Medians plot ----
   output$plot3 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel
@@ -258,10 +268,15 @@ server <- function(input, output, session) {
       ) +
       scale_shape_manual(
         values = c("TRUE" = 6, "FALSE" = 16)
+      ) +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
       )
   })
   
-  # Plot 4: raw data and proref plot
+  # Plot 4: raw data and proref plot ----
   output$plot4 <- renderPlot({
     req(selected_data())
     data_all_backgr_sel <- selected_data()$data_all_backgr_sel
