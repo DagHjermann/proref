@@ -136,7 +136,9 @@ bg2 <- result_sel %>%
   filter(Analysis == result_txt2, Background1b == "Background") %>%
   pull(Station) 
 
-# Medians
+#
+# .-- median values ----
+#
 data_medians_sel <- data_sel %>%
   group_by(STATION_CODE, YEAR) %>%
   summarize(Concentration = median(Concentration),
@@ -164,13 +166,27 @@ df_medians <- annualmedians_result$data_medians_list %>%
             by = join_by(Station), relationship = "many-to-one")
 
 
-# Proref value (90th percentile)
-lookup <- result_detailed %>%
-  filter(Background1b %in% "Background") %>%
-  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) |>
-  tidyr::pivot_wider(names_from = Analysis, values_from = Background1b, values_fill = "x")
+#
+# .-- raw data and proref value (90th percentile)----
+#
+# Proref value = 90th percentile 
+#
 
-# JOIN THIS TO data_all2 !
+lookup_background <- result_detailed %>%
+  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
+  rename(Background = Background1b)
+
+data_all_backgr <- data_all2 %>%
+  ungroup() %>%
+  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+  left_join(lookup_background, relationship = "many-to-many") %>%
+  filter(!is.na(Background)) %>%
+  mutate(
+    Station_bg = case_when(
+      Background %in% "Other" ~ NA,
+      Background %in% "Background" ~ Station)
+  ) %>%
+  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg)
 
 
 #
@@ -178,7 +194,7 @@ lookup <- result_detailed %>%
 #
 
 #
-# plot 1: algorithm plot 
+# .-- plot 1: algorithm plot ----
 #
 
 # For plotting line at 2x the cleanest station
@@ -197,7 +213,7 @@ ggplot(result_sel, aes(Rank, Median2)) +
   facet_wrap(vars(Analysis))
 
 #
-# plot 2: median + time range plot
+# .-- plot 2: median + time range plot ----
 #
 ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
   geom_segment(aes(col = Background1b)) +
@@ -205,7 +221,7 @@ ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
   facet_wrap(vars(Analysis))
 
 #
-#  plot 3: plot of medians (just a single plot)
+#  .-- plot 3: plot of medians (just a single plot) ----
 #
 
 ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
@@ -222,4 +238,50 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
     values = c("TRUE" = 6, "FALSE" = 16)
   )
 
+#
+#  .-- plot 4: plot of raw data and proref ----
+#
+
+# Select data
+data_all_backgr_sel <- data_all_backgr %>%
+  filter(PARAM == "CU__WW", 
+         LATIN_NAME %in% "Mytilus edulis")
+
+data_proref_sel <- data_all_backgr_sel %>% 
+  filter(Background %in% "Background") %>%
+  group_by(Analysis) %>%
+  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
+
+# For setting default y axis range
+max_bg = data_all_backgr_sel %>%
+  filter(Background %in% "Background") %>%
+  pull(Concentration) %>%
+  max()
+
+gg1 <- ggplot(data_all_backgr_sel, aes(YEAR, Concentration)) +
+  geom_jitter(
+    aes(color = Station_bg, size = Background), width = 0.2) +
+  scale_colour_brewer(palette = "Dark2", na.value = "grey80") + 
+  scale_size_manual(values = c("Other"=1, "Background"=2)) + 
+  geom_hline(
+    data =data_proref_sel, aes(yintercept = PROREF), 
+    colour = "red", linetype = "dashed") +
+  # geom_text(
+  #   data =data_proref_sel, aes(label = "PROREF", x = -Inf, y = PROREF), 
+  #   colour = "red", hjust = -0.1, vjust = -0.3) +
+  facet_wrap(vars(Analysis), nrow = 1) +
+  theme_bw()
+
+# Add proref label
+proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
+gg <- gg1 +
+  geom_text(
+    data =data_proref_sel, aes(label = paste0("PROREF\n", PROREF), 
+                               x = proreflabel_x, y = PROREF), 
+    colour = "red", hjust = 0, vjust = 0.5)
+
+# Show all data
+# gg
+# Show background station data
+gg + ylim(0, max_bg)
 
