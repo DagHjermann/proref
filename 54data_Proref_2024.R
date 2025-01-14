@@ -109,9 +109,16 @@ data_all2 %>%
 data_all2 <- data_all2 %>%
   mutate(
     PARAM = case_when(
+      # Older SCCP are just given as "SCCP", not SCCP excl/incl. LOQ
       grepl("SCCP__", PARAM) ~ sub("SCCP__", "SCCP eksl. LOQ__", PARAM),
       grepl("MCCP__", PARAM) ~ sub("MCCP__", "MCCP eksl. LOQ__", PARAM),
+      # Krysen = CHR (chrysene)
       grepl("Krysen__", PARAM) ~ sub("Krysen__", "CHR__", PARAM),
+      # BBF, BBJF and BBJKF
+      # = benzo[b]fluoranthene, benzo[b,j]fluoranthene, and benzo[b,j,k]fluoranthene
+      # should all be BBJF (checked with MGR, ARU and KBA)
+      grepl("BBF__", PARAM) ~ sub("BBF__", "BBJF__", PARAM),
+      grepl("BBJKF__", PARAM) ~ sub("BBJKF__", "BBJF__", PARAM),
       TRUE ~ PARAM
     )
   )
