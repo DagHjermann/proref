@@ -403,6 +403,72 @@ result_summ <- result_summ %>%
 
 #### Add the actual PROREF values  
 
+- using Background1b above  
+
+```{r}
+
+# Note: code is similar to code in script 55_plotting (part "raw data and proref value"), except
+# - using 'Proref_type' instead of 'Analysis' (the latter refers to which 'result_detailed' file was used)
+# - end result is called 'result_proref'  
+
+# "lookup" data which tells (for each LATIN_NAME, PARAM) which stations that are background stations
+lookup_background <- bind_rows(
+  result_detailed %>%
+    mutate(
+      Proref_type = "90 perc, max median ratio",
+      Background = Background1b) %>%
+    select(Proref_type, LATIN_NAME, PARAM, Station, Background),
+  result_detailed %>%
+    mutate(
+      Proref_type = "90 perc only",
+      Background = Background1) %>%
+    select(Proref_type, LATIN_NAME, PARAM, Station, Background),
+  result_detailed %>%
+    mutate(
+      Proref_type = "95 perc only",
+      Background = Background2) %>%
+    select(Proref_type, LATIN_NAME, PARAM, Station, Background)
+)
+
+# xtabs(~Proref_type, lookup_background)
+# xtabs(~Proref_type + Background, lookup_background)
+
+# data for computing Proref: the raw data, then add info on whether the station
+#   is a background station (for each LATIN_NAME, PARAM)
+data_all_backgr <- data_all2 %>%
+  ungroup() %>%
+  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+  # to the raw data (three lines above), we add the column Background1b (here called Background)
+  # Station, LATIN_NAME, PARAM are used for joining data
+  left_join(lookup_background, 
+            by = join_by(Station, LATIN_NAME, PARAM), 
+            relationship = "many-to-many") %>%
+  # Keep only rows with some entry in "Background"
+  filter(!is.na(Background)) %>%
+  # Make new column 'Station_bg' which is the text entry 'Station' for each background station
+  # (this is only used for plotting)
+  mutate(
+    Station_bg = case_when(
+      Background %in% "Other" ~ NA,
+      Background %in% "Background" ~ Station)
+  ) %>%
+  arrange(LATIN_NAME, PARAM, Proref_type, desc(Background), Station_bg) %>%
+  # Define 'LOQ' column - also used only for plotting
+  mutate(LOQ = case_when(
+    is.na(FLAG1) ~ "Over LOQ",
+    TRUE ~ "Under LOQ"))
+
+#
+# Proref
+#
+result_proref <- data_all_backgr %>% 
+  filter(Background %in% "Background") %>%
+  group_by(Proref_type, LATIN_NAME, PARAM) %>%
+  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
+            .groups = "drop")
+
+```
+
 - takes 36 minutes with 4 cores running in parallel  
 
 ```{r}
@@ -434,13 +500,14 @@ t1-t0
 # Split PARAM (e.g. 'PFOS__WW') up back into
 # PARAM (e.g. 'PFOS') and BASIS (e.g. "WW)
 
-X <- strsplit(result_summ$PARAM, split = "__")
-result_summ$PARAM <- map_chr(X, 1)
-result_summ$Basis <- map_chr(X, 2)
-result_summ <- result_summ %>%
+X <- strsplit(result_proref$PARAM, split = "__")
+result_proref$PARAM <- map_chr(X, 1)
+result_proref$Basis <- map_chr(X, 2)
+result_proref <- result_proref %>%
   select(PARAM, Basis, everything())
 
-# View(result_summ)
+# View(result_proref)
+
 ```
 
 
@@ -452,14 +519,13 @@ txt_years <- range(years_backgr2) %>% paste(collapse = "-")
 txt_timestamp <- lubridate::now() %>% substr(1, 16) %>% sub(" ", "-T", .) %>% sub(":", "", .)
 
 fn1 <- paste0("Data/54_result_summ_", txt_years, "_", txt_timestamp, ".csv")
-result_summ %>%
+result_proref %>%
   readr::write_csv(fn1)  
 
 fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", txt_timestamp, ".csv")
-result_summ %>%
-  filter(Background %in% "Background 1b") %>%
+result_proref %>%
+  filter(Proref_type %in% "90 perc, max median ratio") %>%
   readr::write_csv(fn2)
-
 
 ```
 
