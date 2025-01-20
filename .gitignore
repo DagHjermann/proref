@@ -3,3 +3,14 @@
 .RData
 .Ruserdata
 *.html
+Data/*
+Figures/*
+Info/*
+Input_data/*
+proref_app1/TEST.png
+*pdf
+milkys_shape*
+dashboard.Rmd
+54_Proref_revision_2024_full.rmarkdown
+54_Proref_revision_2024_full_files/*
+station_dashboard.Rmd
