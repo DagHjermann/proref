@@ -55,8 +55,8 @@ information
 # to recreate data from raw data, uncomment the following line:
 # source("54data_Proref_2024.R")
 
-data_all2 <- readRDS("Data/54_data_2024.rds")
-df_series_sel <- readRDS("Data/54_dataseries_2024.rds")
+data_all2 <- readRDS("Data/54_data_2024_loqfilter3x.rds")
+df_series_sel <- readRDS("Data/54_dataseries_2024_loqfilter3x.rds")
 
 ```
 
@@ -144,7 +144,7 @@ test <- get_background_values(
 
 ### Run analysis for data through 2022  
 
-* Ca. 38 minutes with 4 paralell cores  
+* Ca. 23 minutes with 4 paralell cores  
 
 ```{r, results='hide'}
 
