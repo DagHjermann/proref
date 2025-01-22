@@ -5,6 +5,8 @@ library(forcats)
 library(ggrepel)
 library(glue)
 
+source("app_functions.R")
+
 #
 # data ----
 #
@@ -22,9 +24,41 @@ result_detailed <- bind_rows(
 ) %>%
   mutate(Analysis = fct_inorder(Analysis))
 
+#
+# Raw data with 'Background' classification   
+#
+lookup_background <- result_detailed %>%
+  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
+  rename(Background = Background1b)
+
+data_all_backgr <- data_all2 %>%
+  ungroup() %>%
+  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+  left_join(lookup_background, relationship = "many-to-many") %>%
+  filter(!is.na(Background)) %>%
+  mutate(
+    Station_bg = case_when(
+      Background %in% "Other" ~ NA,
+      Background %in% "Background" ~ Station)
+  ) %>%
+  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
+  mutate(LOQ = case_when(
+    is.na(FLAG1) ~ "Over LOQ",
+    TRUE ~ "Under LOQ"))
+
+#
+# Proref
+#
+data_proref <- data_all_backgr %>% 
+  filter(Background %in% "Background") %>%
+  group_by(Analysis, LATIN_NAME, PARAM) %>%
+  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
 
 
-# UI
+#
+# UI ----------------------------------------------------------------------------
+#
+
 ui <- fluidPage(
   titlePanel("Parameter and Species Analysis"),
   
@@ -53,13 +87,20 @@ ui <- fluidPage(
                  plotOutput("plot1"),
                  shiny::numericInput("max_rank", "Show first ... stations", value = 50)),
         tabPanel("Time Range Plot", plotOutput("plot2")),
-        tabPanel("Medians Plot", plotOutput("plot3"))
+        tabPanel("Medians Plot", plotOutput("plot3")),
+        tabPanel("Raw data Plot", plotOutput("plot4"),
+                 shiny::checkboxInput("show_all_data", "Show all stations", value = TRUE),
+                 shiny::checkboxInput("restrict_y_axis", "Restrict y axis to background station data", value = TRUE)
+        )
       )
     )
   )
 )
 
-# Server
+#
+# Server ------------------------------------------------------------------------
+#
+
 server <- function(input, output, session) {
   
   # Reactive values for filtered data
@@ -74,8 +115,7 @@ server <- function(input, output, session) {
     # Filter result_detailed based on partial parameter match
     # param_pattern <- input$param
     # matching_params <- unique(result_detailed$PARAM[grepl(param_pattern, result_detailed$PARAM, ignore.case = TRUE)])
-    
-    
+
     # Update result_sel
     result_sel <- result_detailed %>%
       filter(PARAM %in% input$param & LATIN_NAME == species)
@@ -89,9 +129,30 @@ server <- function(input, output, session) {
     data_sel <- data_all2 %>%
       filter(PARAM %in% input$param & LATIN_NAME == species)
     
+    # update data_all_backgr_sel
+    data_all_backgr_sel <- data_all_backgr %>%
+      filter(PARAM %in% input$param & LATIN_NAME %in% species)
+    
+    # calculate proref
+    data_proref_sel <- data_proref %>%
+      filter(PARAM %in% input$param & LATIN_NAME %in% species)
+    
+    # For setting default y axis range
+    max_bg = data_all_backgr_sel %>%
+      filter(Background %in% "Background") %>%
+      pull(Concentration) %>%
+      max()
+    
+    # For setting colours
+    number_bg_stations <- table(data_all_backgr_sel$Station_bg) %>% length()
+
     list(result_sel = result_sel, 
          line_2x_cleanest = line_2x_cleanest,
-         data_sel = data_sel)
+         data_sel = data_sel,
+         data_all_backgr_sel = data_all_backgr_sel,
+         data_proref_sel = data_proref_sel,
+         max_bg = max_bg)
+    
   })
   
   # Show matching parameters
@@ -104,12 +165,13 @@ server <- function(input, output, session) {
   #         paste(unique(data$result_sel$PARAM), collapse = ", "))
   # })
   
-  # Plot 1: Algorithm plot
+  # Plot 1: Algorithm plot ----
   output$plot1 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel %>%
       filter(Rank <= input$max_rank)
     line_2x_cleanest <- selected_data()$line_2x_cleanest
+    data_proref <- selected_data()$data_proref
     
     if (nrow(result_sel) == 0) return(NULL)
     
@@ -121,12 +183,24 @@ server <- function(input, output, session) {
                       point.padding = 0.2, box.padding = 0.25, 
                       direction = "y") +
       geom_hline(data = line_2x_cleanest, aes(yintercept = Median2), 
-                 linetype = "dashed", colour = "brown") +
+                 linetype = "dashed", colour = "blue3") +
+      geom_hline(
+        data = data_proref, aes(yintercept = PROREF), 
+        colour = "red", linetype = "dashed") +
+      geom_text(
+        data = data_proref, aes(x = -Inf, y = Inf, label = paste("PROREF =", PROREF)), 
+        colour = "red", hjust = -0.1, vjust = 1.5) +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis))
+      facet_wrap(vars(Analysis)) +
+      labs(subtitle = "Red line = PROREF, blue line = 2x cleanest station") +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
+      )
   })
   
-  # Plot 2: Time range plot
+  # Plot 2: Time range plot ----
   output$plot2 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel
@@ -136,10 +210,15 @@ server <- function(input, output, session) {
     ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
       geom_segment(aes(col = Background1b)) +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis))
+      facet_wrap(vars(Analysis)) +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
+      )
   })
   
-  # Plot 3: Medians plot
+  # Plot 3: Medians plot ----
   output$plot3 <- renderPlot({
     req(selected_data())
     result_sel <- selected_data()$result_sel
@@ -189,8 +268,43 @@ server <- function(input, output, session) {
       ) +
       scale_shape_manual(
         values = c("TRUE" = 6, "FALSE" = 16)
+      ) +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
       )
   })
+  
+  # Plot 4: raw data and proref plot ----
+  output$plot4 <- renderPlot({
+    req(selected_data())
+    data_all_backgr_sel <- selected_data()$data_all_backgr_sel
+    data_proref_sel <- selected_data()$data_proref_sel
+    max_bg <- selected_data()$max_bg
+    # browser()
+    gg_all <- create_proref_plot(data_all_backgr_sel, 
+                               data_proref_sel)
+    gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"),
+                              data_proref_sel)
+    if (input$show_all_data){
+      # Show all data
+      if (input$restrict_y_axis){
+        gg_all + ylim(0, max_bg)
+      } else {
+        gg_all
+      }
+    } else {
+      # Show background station data
+      if (input$restrict_y_axis){
+        gg_bg + ylim(0, max_bg)
+      } else {
+        gg_bg
+      }
+    }
+  })
+  
+  
 }
 
 # Run the app
