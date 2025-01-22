@@ -14,11 +14,16 @@ source("app_functions.R")
 datasets <- tibble::tribble(
   ~analysis_name, ~fn_rawdata, ~fn_series, ~fn_result,
   "Original (1992-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2024-11-29.rds",
-  "Original (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-05-T1812.rds"
+  "Original (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-05-T1812.rds",
+  "LOQ-filtered (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds"
 )
 
-d1 <- 1
-d2 <- 2
+params_menu <- readRDS(paste0("../Data/", datasets$fn_result[3])) %>%
+  pull(PARAM) %>%
+  unique()
+
+d1 <- 2
+d2 <- 3
 result_txt1 <- datasets$analysis_name[d1]
 result_txt2 <- datasets$analysis_name[d2]
 
@@ -87,7 +92,7 @@ ui <- fluidPage(
       # Parameter selection with text input for partial matching
       # textInput("param", "Parameter (partial matching)", value = "CU__WW"),
       selectizeInput("param", "Parameter", 
-                     choices = unique(result_detailed$PARAM), 
+                     choices = params_menu, 
                      selected = "CD__WW", multiple = FALSE,
                      options = NULL),
       
