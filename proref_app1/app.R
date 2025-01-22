@@ -22,64 +22,6 @@ params_menu <- readRDS(paste0("../Data/", datasets$fn_result[3])) %>%
   pull(PARAM) %>%
   unique()
 
-d1 <- 2
-d2 <- 3
-result_txt1 <- datasets$analysis_name[d1]
-result_txt2 <- datasets$analysis_name[d2]
-
-# NOTE: these two uses only analysis 1 data:  
-data_all2 <- readRDS(paste0("../Data/", datasets$fn_rawdata[d1]))
-df_series_sel <- readRDS(paste0("../Data/", datasets$fn_series[d1]))
-
-result_detailed1 <- readRDS(paste0("../Data/", datasets$fn_result[d1]))
-result_detailed2 <- readRDS(paste0("../Data/", datasets$fn_result[d2]))
-
-result_detailed <- bind_rows(
-  bind_cols(data.frame(Analysis = result_txt1), result_detailed1),
-  bind_cols(data.frame(Analysis = result_txt2), result_detailed2)
-) %>%
-  mutate(Analysis = fct_inorder(Analysis))
-
-#
-# Raw data with 'Background' classification   
-#
-lookup_background <- result_detailed %>%
-  select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
-  rename(Background = Background1b)
-
-data_all_backgr <- data_all2 %>%
-  ungroup() %>%
-  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
-  # this is a many-to-many relation since 'lookup_background' have 2 "Analysis" versions for each parameter/station:
-  left_join(lookup_background, relationship = "many-to-many") %>%
-  filter(!is.na(Background)) %>%
-  mutate(
-    Station_bg = case_when(
-      Background %in% "Other" ~ NA,
-      Background %in% "Background" ~ Station)
-  ) %>%
-  arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
-  mutate(LOQ = case_when(
-    is.na(FLAG1) ~ "Over LOQ",
-    TRUE ~ "Under LOQ"))
-
-# if uncommented:
-# browser()
-# ...this shows that
-# lookup_background has 29375 rows
-# data_all2 has 2223050 rows
-# data_all_backgr has 3570728 rows
-
-
-#
-# Proref
-#
-data_proref <- data_all_backgr %>% 
-  filter(Background %in% "Background") %>%
-  group_by(Analysis, LATIN_NAME, PARAM) %>%
-  summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
-
-
 #
 # UI ----------------------------------------------------------------------------
 #
@@ -89,6 +31,15 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
+      
+      # Analysis selection
+      selectInput("analysis1", "Analysis 1",
+                  choices = datasets$analysis_name,
+                  selected = datasets$analysis_name[1]),
+      selectInput("analysis2", "Analysis 2",
+                  choices = datasets$analysis_name,
+                  selected = datasets$analysis_name[2]),
+      
       # Parameter selection with text input for partial matching
       # textInput("param", "Parameter (partial matching)", value = "CU__WW"),
       selectizeInput("param", "Parameter", 
@@ -128,8 +79,89 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
+  # reactive: selected_analysis ----
+  selected_analysis <- reactive({
+    
+    
+    d1 <- which(datasets$analysis_name == input$analysis1)
+    d2 <- which(datasets$analysis_name == input$analysis2)
+    result_txt1 <- datasets$analysis_name[d1]
+    result_txt2 <- datasets$analysis_name[d2]
+    
+    # NOTE: these two uses only analysis 1 data:  
+    data_all2 <- readRDS(paste0("../Data/", datasets$fn_rawdata[d1]))
+    df_series_sel <- readRDS(paste0("../Data/", datasets$fn_series[d1]))
+    
+    result_detailed1 <- readRDS(paste0("../Data/", datasets$fn_result[d1]))
+    result_detailed2 <- readRDS(paste0("../Data/", datasets$fn_result[d2]))
+    
+    result_detailed <- bind_rows(
+      bind_cols(data.frame(Analysis = result_txt1), result_detailed1),
+      bind_cols(data.frame(Analysis = result_txt2), result_detailed2)
+    ) %>%
+      mutate(Analysis = fct_inorder(Analysis))
+    
+    #
+    # Raw data with 'Background' classification   
+    #
+    lookup_background <- result_detailed %>%
+      select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
+      rename(Background = Background1b)
+    
+    data_all_backgr <- data_all2 %>%
+      ungroup() %>%
+      select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+      # this is a many-to-many relation since 'lookup_background' have 2 "Analysis" versions for each parameter/station:
+      left_join(lookup_background, relationship = "many-to-many") %>%
+      filter(!is.na(Background)) %>%
+      mutate(
+        Station_bg = case_when(
+          Background %in% "Other" ~ NA,
+          Background %in% "Background" ~ Station)
+      ) %>%
+      arrange(LATIN_NAME, PARAM, Analysis, desc(Background), Station_bg) %>%
+      mutate(LOQ = case_when(
+        is.na(FLAG1) ~ "Over LOQ",
+        TRUE ~ "Under LOQ"))
+    
+    # if uncommented:
+    # browser()
+    # ...this shows that
+    # lookup_background has 29375 rows
+    # data_all2 has 2223050 rows
+    # data_all_backgr has 3570728 rows
+    
+    
+    #
+    # Proref
+    #
+    data_proref <- data_all_backgr %>% 
+      filter(Background %in% "Background") %>%
+      group_by(Analysis, LATIN_NAME, PARAM) %>%
+      summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
+    
+    list(
+      result_txt1 = result_txt1,
+      result_txt2 = result_txt2,
+      data_all2 = data_all2,
+      df_series_sel = df_series_sel,
+      result_detailed = result_detailed,
+      data_all_backgr = data_all_backgr,
+      data_proref = data_proref
+    )
+    
+  })
+  
+  # reactive: selected_data ----
   # Reactive values for filtered data
   selected_data <- reactive({
+    
+    req(selected_analysis())
+    data_all2 <- selected_analysis()$data_all2
+    result_detailed <- selected_analysis()$result_detailed
+    data_all_backgr <- selected_analysis()$data_all_backgr
+    data_proref <- selected_analysis()$data_proref
+    
     # Convert species common name to Latin name
     species <- if (input$species == "mussel") {
       "Mytilus edulis"
@@ -245,9 +277,16 @@ server <- function(input, output, session) {
   
   # Plot 3: Medians plot ----
   output$plot3 <- renderPlot({
+    
+    req(selected_analysis())
+    result_txt1 <- selected_analysis()$result_txt1
+    result_txt2 <- selected_analysis()$result_txt2
+    
     req(selected_data())
-    result_sel <- selected_data()$result_sel
     data_sel <- selected_data()$data_sel
+    result_sel <- selected_data()$result_sel
+    
+    # browser()
     
     if (nrow(result_sel) == 0) return(NULL)
     
