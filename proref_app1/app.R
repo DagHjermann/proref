@@ -10,13 +10,24 @@ source("app_functions.R")
 #
 # data ----
 #
-data_all2 <- readRDS("../Data/54_data_2024.rds")
-df_series_sel <- readRDS("../Data/54_dataseries_2024.rds")
 
-result_detailed1 <- readRDS("../Data/54_result_detailed_2024-11-29.rds")
-result_txt1 <- "Original (1992-2022)"
-result_detailed2 <- readRDS("../Data/54_result_detailed_2003-2022_2025-01-05-T1812.rds")
-result_txt2 <- "2003-2022"
+datasets <- tibble::tribble(
+  ~analysis_name, ~fn_rawdata, ~fn_series, ~fn_result,
+  "Original (1992-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2024-11-29.rds",
+  "Original (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-05-T1812.rds"
+)
+
+d1 <- 1
+d2 <- 2
+result_txt1 <- datasets$analysis_name[d1]
+result_txt2 <- datasets$analysis_name[d2]
+
+# NOTE: these two uses only analysis 1 data:  
+data_all2 <- readRDS(paste0("../Data/", datasets$fn_rawdata[d1]))
+df_series_sel <- readRDS(paste0("../Data/", datasets$fn_series[d1]))
+
+result_detailed1 <- readRDS(paste0("../Data/", datasets$fn_result[d1]))
+result_detailed2 <- readRDS(paste0("../Data/", datasets$fn_result[d2]))
 
 result_detailed <- bind_rows(
   bind_cols(data.frame(Analysis = result_txt1), result_detailed1),
@@ -34,6 +45,7 @@ lookup_background <- result_detailed %>%
 data_all_backgr <- data_all2 %>%
   ungroup() %>%
   select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
+  # this is a many-to-many relation since 'lookup_background' have 2 "Analysis" versions for each parameter/station:
   left_join(lookup_background, relationship = "many-to-many") %>%
   filter(!is.na(Background)) %>%
   mutate(
@@ -45,6 +57,14 @@ data_all_backgr <- data_all2 %>%
   mutate(LOQ = case_when(
     is.na(FLAG1) ~ "Over LOQ",
     TRUE ~ "Under LOQ"))
+
+# if uncommented:
+# browser()
+# ...this shows that
+# lookup_background has 29375 rows
+# data_all2 has 2223050 rows
+# data_all_backgr has 3570728 rows
+
 
 #
 # Proref
