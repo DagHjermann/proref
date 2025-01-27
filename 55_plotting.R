@@ -12,18 +12,27 @@ library(ggrepel)
 #
 # data ----
 #
+
+datasets <- tibble::tribble(
+  ~analysis_name, ~fn_rawdata, ~fn_series, ~fn_result, ~year1, ~year2,
+  "Original (1992-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2024-11-29.rds", 1992, 2022,
+  "Original (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-05-T1812.rds", 2003, 2022,
+  "LOQ-filtered (2003-2022)", "54_data_2024_loqfilter3x.rds", "Data/54_dataseries_2024_loqfilter3x.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds", 2003, 2022
+)
+
+# Full data (note: INCLUDING )
 data_all2 <- readRDS("Data/54_data_2024.rds") %>%
   select(STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1)
 df_series_sel <- readRDS("Data/54_dataseries_2024.rds")
 
-result_detailed1 <- readRDS("Data/54_result_detailed_2024-11-29.rds")
-result_txt1 <- "Original (1992-2022)"
-result_detailed2 <- readRDS("Data/54_result_detailed_2003-2022_2025-01-05-T1812.rds")
-result_txt2 <- "2003-2022"
+read_data <- function(fn){
+  readRDS(paste0("Data/", fn))
+}
 
 result_detailed <- bind_rows(
-  bind_cols(data.frame(Analysis = result_txt1), result_detailed1),
-  bind_cols(data.frame(Analysis = result_txt2), result_detailed2)
+  bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_result[1])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_result[2])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_result[3]))
 ) %>%
   mutate(Analysis = fct_inorder(Analysis))
 
@@ -38,12 +47,22 @@ lookup_background <- result_detailed %>%
   select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
   rename(Background = Background1b)
 
-data_all_backgr <- data_all2 %>%
-  ungroup() %>%
-  select(Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1) %>%
-  left_join(lookup_background, 
-            by = join_by(Station, LATIN_NAME, PARAM), 
-            relationship = "many-to-many") %>%
+data_all2_comb <- bind_rows(
+  bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_rawdata[1]) %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_rawdata[2]) %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_rawdata[3]) %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
+)
+
+data_all_backgr <- lookup_background %>%
+  filter(!grepl("SCCP__", PARAM)) %>%
+  filter(!grepl("MCCP__", PARAM)) %>%
+  filter(!grepl("Krysen__", PARAM)) %>%
+  select(Analysis, Station, LATIN_NAME, PARAM, Background) %>%
+  left_join(data_all2_comb %>%
+              filter(!is.na(Concentration)) %>%
+              select(Analysis, Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1), 
+            by = join_by(Analysis, Station, LATIN_NAME, PARAM), 
+            relationship = "one-to-many") %>%
   filter(!is.na(Background)) %>%
   mutate(
     Station_bg = case_when(
@@ -77,13 +96,19 @@ result_diff <- result_detailed %>%
   filter(Background1b %in% "Background") %>%
   count(Analysis, PARAM, LATIN_NAME) %>%
   tidyr::pivot_wider(names_from = Analysis, values_from = n) %>%
-  mutate(diff = `Original (1992-2022)` - `2003-2022`) %>%
-  arrange(diff)
+  mutate(
+    diff1 = `Original (2003-2022)` - `Original (1992-2022)`,
+    diff2 = `LOQ-filtered (2003-2022)` - `Original (2003-2022)`) %>%
+  arrange(diff1, diff2)
+
+#
+# . largest differences, 1992-2022 vs 2003-2022
+#
 
 result_diff_summ <- result_diff %>%
-  count(`Original (1992-2022)`, `2003-2022`)
+  count(`Original (1992-2022)`, `Original (2003-2022)`)
 
-ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `2003-2022`, fill = n)) +
+ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `Original (2003-2022)`, fill = n)) +
   geom_tile() +
   scale_fill_viridis_c() +
   geom_text(
@@ -94,7 +119,27 @@ ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `2003-2022`, fill =
     aes(label = n), color = "black", size = 3) +
   labs(title = "Number of background stations per substance, 1992-2022 vs 2003-2022")
 
-table(result_diff$`Original (1992-2022)`, result_diff$diff)
+table(result_diff$`Original (1992-2022)`, result_diff$diff1)
+
+#
+# . largest differences, 1992-2022 vs 2003-2022
+#
+
+result_diff_summ <- result_diff %>%
+  count(`Original (2003-2022)`, `LOQ-filtered (2003-2022)`)
+
+ggplot(result_diff_summ, aes(x = `Original (2003-2022)`, y = `LOQ-filtered (2003-2022)`, fill = n)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  geom_text(
+    data = result_diff_summ %>% filter(n < 100), 
+    aes(label = n), color = "white", size = 3) +
+  geom_text(
+    data = result_diff_summ %>% filter(n >= 100), 
+    aes(label = n), color = "black", size = 3) +
+  labs(title = "Number of background stations per substance, 2003-2022, without and with filtering LOQ")
+
+table(result_diff$`Original (1992-2022)`, result_diff$diff1)
 
 
 #
