@@ -57,6 +57,9 @@ data_all2_comb <- bind_rows(
   bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_rawdata[3]) %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
 )
 
+#
+# .-- background stations ----
+#
 data_all_backgr <- lookup_background %>%
   # These parameters are only found in raw data file number 1 - they were fixed later
   filter(!grepl("SCCP__", PARAM)) %>%
@@ -180,6 +183,16 @@ data_proref_wide <- data_proref %>%
     `proref Original (2003-2022)`, n2 = `Original (2003-2022)`,
     `proref LOQ-filtered (2003-2022)`, n3 = `LOQ-filtered (2003-2022)`)
 
+ggplot(data_proref_wide, aes(`proref Original (1992-2022)`, `proref Original (2003-2022)`)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+ggplot(data_proref_wide, aes(`proref Original (2003-2022)`, `proref LOQ-filtered (2003-2022)`)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
 writexl::write_xlsx(
   list(data_proref_wide,
        data.frame(info = "n1, n2, n3 = number of background stations")), 
@@ -235,6 +248,13 @@ if (species_common == "mussel"){
   species <- "Gadus morhua"
 }
 
+# Choose analysis 
+d1 <- 1
+d2 <- 3
+analysis1 <- datasets$analysis_name[d1]
+analysis2 <- datasets$analysis_name[d2]
+
+
 #
 # . for server ----
 #
@@ -242,11 +262,16 @@ if (species_common == "mussel"){
 #
 # .-- select data ---- 
 #
-result_sel <- result_detailed %>%
-  filter(PARAM == param & LATIN_NAME == species)
-data_sel <- data_all2 %>%
-  filter(PARAM == param & LATIN_NAME == species)
 
+result_sel <- result_detailed %>%
+  filter(Analysis %in% c(analysis1, analysis2),
+         PARAM == param,
+         LATIN_NAME == species)
+
+data_sel <- data_all2_comb %>%
+  filter(Analysis %in% c(analysis1, analysis2),
+         PARAM == param,
+         LATIN_NAME == species)
 
 #
 # .-- stations----
