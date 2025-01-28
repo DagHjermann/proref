@@ -27,7 +27,6 @@ datasets <- tibble::tribble(
 
 # datasets
 # data_all -> data_all_comb
-# df_series_sel
 # result_detailed -> lookup_background (only used once|)
 # data_all_comb + lookup_background -> data_backgr_all
 
@@ -37,7 +36,6 @@ datasets <- tibble::tribble(
 # Full data (note: INCLUDING )
 data_all <- readRDS("Data/54_data_2024.rds") %>%
   select(STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1)
-df_series_sel <- readRDS("Data/54_dataseries_2024.rds")
 
 read_data <- function(fn){
   readRDS(paste0("Data/", fn))
