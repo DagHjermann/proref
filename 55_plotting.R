@@ -4,9 +4,11 @@
 #
 
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(forcats)
 library(ggrepel)
+library(glue)
 
 #
 # GET/CALCULATE DATA ----
@@ -55,7 +57,8 @@ data_all2_comb <- bind_rows(
   bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_rawdata[1]) %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
   bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_rawdata[2]) %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
   bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_rawdata[3]) %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
-)
+) %>%
+  mutate(Analysis = fct_inorder(Analysis))
 
 #
 # .-- background stations ----
@@ -89,10 +92,10 @@ data_proref <- data_backgr_all %>%
   filter(Background %in% "Background") %>%
   group_by(Analysis, LATIN_NAME, PARAM) %>%
   summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
+            Median = quantile(Concentration, 0.5) %>% signif(3),
             .groups = "drop")
 
 writexl::write_xlsx(data_proref, "Data/55_proref.xlsx")
-
 
 #
 # VARIOUS DATA/PLOTS ----
@@ -132,7 +135,7 @@ ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `Original (2003-202
 table(number_of_backgr_stations$`Original (1992-2022)`, number_of_backgr_stations$diff1)
 
 #
-# . largest differences, 1992-2022 vs 2003-2022
+# . largest differences, 2003-2022 vs 2003-2022
 #
 
 result_diff_summ <- number_of_backgr_stations %>%
@@ -167,6 +170,14 @@ result_bystation_mussel <- result_bystation %>%
   mutate(Station = fct_inorder(Station))
 
 ggplot(result_bystation_mussel, aes(Station, fraction_background)) +
+  geom_col() +
+  coord_flip()
+
+result_bystation_cod <- result_bystation %>%
+  filter(Analysis == "LOQ-filtered (2003-2022)" & LATIN_NAME == "Gadus morhua") %>%
+  mutate(Station = fct_inorder(Station))
+
+ggplot(result_bystation_cod, aes(Station, fraction_background)) +
   geom_col() +
   coord_flip()
 
@@ -239,8 +250,9 @@ data_all2 %>%
 #
 
 param <- "CU__WW"
-param <- "CB105__WW"
+param <- "CB229__WW"
 species_common <- "mussel"
+species_common <- "cod"
 
 if (species_common == "mussel"){
   species <- "Mytilus edulis"
@@ -266,43 +278,71 @@ analysis2 <- datasets$analysis_name[d2]
 result_sel <- result_detailed %>%
   filter(Analysis %in% c(analysis1, analysis2),
          PARAM == param,
-         LATIN_NAME == species)
+         LATIN_NAME == species) %>%
+  mutate(Analysis = fct_drop(Analysis))
+
+data_proref_sel <- data_proref %>%
+  filter(Analysis %in% c(analysis1, analysis2),
+         PARAM == param,
+         LATIN_NAME == species) %>%
+  mutate(Analysis = fct_drop(Analysis))
 
 data_sel <- data_all2_comb %>%
   filter(Analysis %in% c(analysis1, analysis2),
          PARAM == param,
-         LATIN_NAME == species)
+         LATIN_NAME == species) %>%
+  mutate(Analysis = fct_drop(Analysis))
+
+data_backgr_sel <- data_backgr_all %>%
+  filter(Analysis %in% c(analysis1, analysis2),
+         PARAM == param,
+         LATIN_NAME == species) %>%
+  mutate(Analysis = fct_drop(Analysis))
 
 #
 # .-- stations----
 #
-bg1 <- result_sel %>%
-  filter(Analysis == result_txt1, Background1b == "Background") %>%
-  pull(Station) 
-bg2 <- result_sel %>%
-  filter(Analysis == result_txt2, Background1b == "Background") %>%
-  pull(Station) 
+
+# bg1 <- result_sel %>%
+#   filter(Analysis == result_txt1, Background1b == "Background") %>%
+#   pull(Station) 
+# bg2 <- result_sel %>%
+#   filter(Analysis == result_txt2, Background1b == "Background") %>%
+#   pull(Station) 
 
 #
-# .-- median values ----
+# .-- overall median by station ----
 #
-data_medians_sel <- data_sel %>%
-  group_by(STATION_CODE, YEAR) %>%
+
+data_overall_median <- data_backgr_sel %>%
+  ungroup() %>%
+  group_by(Analysis, Station) %>%
+  summarize(Median = median(Concentration),
+            Min_year = min(YEAR),
+            Max_year = max(YEAR),
+            Station_bg = first(Station_bg),
+            .groups = "drop") %>%
+  mutate(
+    Background = case_when(
+      !is.na(Station_bg) ~ "Background",
+      is.na(Station_bg) ~ "Other")) 
+
+#
+# .-- median by station and year ----
+#
+
+data_medians_sel <- data_backgr_sel %>%
+  ungroup() %>%
+  group_by(Analysis, Station, YEAR) %>%
   summarize(Concentration = median(Concentration),
             Percent_below_LOQ = mean(!is.na(FLAG1))*100,
             Half_below_LOQ = (Percent_below_LOQ >= 50),
+            Station_bg = first(Station_bg),
             .groups = "drop") %>%
-  rename(Station = STATION_CODE) %>%
   mutate(
     Background = case_when(
-      (Station %in% bg1) & !(Station %in% bg2) ~ "Background 1",
-      !(Station %in% bg1) & (Station %in% bg2) ~ "Background 2",
-      (Station %in% bg1) & (Station %in% bg2) ~ "Background 1+2",
-      TRUE ~ "Other"),
-    Background = factor(Background, 
-                        levels = c("Background 1", "Background 2", "Background 1+2", "Other"))
-  ) %>%
-  arrange(rev(Background))
+      !is.na(Station_bg) ~ "Background",
+      is.na(Station_bg) ~ "Other"))
 
 #
 # . for ui (comparison plots) ----
@@ -323,21 +363,58 @@ ggplot(result_sel, aes(Rank, Median2)) +
   geom_text_repel(aes(label = glue("{Station} (P = {P_round})")), hjust = 0, 
                   nudge_x = 0.5, point.padding = 0.2, box.padding = 0.25, direction = "y") +
   # Line at 2x the cleanest station
-  geom_hline(data = line_2x_cleanest, aes(yintercept = Median2), linetype = "dashed", colour = "brown") +
+  geom_hline(data = line_2x_cleanest, aes(yintercept = Median2), 
+             linetype = "dashed", colour = "brown") +
+  # Proref line
+  geom_hline(
+    data = data_proref_sel, aes(yintercept = PROREF),
+    colour = "blue2", linetype = "dashed") +
+  expand_limits(y = 0) +
+  facet_wrap(vars(Analysis)) 
+
+
+#
+# .-- plot 2: overall median + time range plot ----
+#
+ggplot(data_overall_median %>%
+         arrange(Analysis, desc(Background)), aes(x = Min_year, xend = Max_year, y = Median)) +
+  geom_segment(aes(col = Background)) +
+  # Proref line
+  geom_hline(
+    data = data_proref_sel, aes(yintercept = PROREF),
+    colour = "blue2", linetype = "dashed") +
   expand_limits(y = 0) +
   facet_wrap(vars(Analysis))
 
-#
-# .-- plot 2: median + time range plot ----
-#
-ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
-  geom_segment(aes(col = Background1b)) +
-  expand_limits(y = 0) +
-  facet_wrap(vars(Analysis))
 
 #
-#  .-- plot 3: plot of medians (just a single plot) ----
+#  .-- plot 3: annual medians ----
 #
+
+ggplot(data_medians_sel %>% filter(Background != "Other"), 
+       aes(YEAR, Concentration, group = Station)) +
+  geom_line(
+    data = data_medians_sel %>% filter(Background %in% "Other"), color = "grey70") +
+  geom_line(aes(color = Station_bg)) +
+  geom_hline(data = data_proref_sel, aes(yintercept = PROREF), 
+             linetype = "dashed", colour = "blue") +
+  scale_y_log10() +
+  facet_wrap(vars(Analysis))
+
+ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
+  scale_y_log10() +
+  facet_wrap(vars(Analysis))
+  geom_line(data = data_medians_sel %>% filter(Background != "Other"), 
+            aes(color = Background)) +
+  geom_point(data = data_medians_sel %>% filter(Background != "Other"), 
+             aes(color = Background, shape = Half_below_LOQ)) +
+  scale_color_manual(
+    values = c("Background 1" = "red", "Background 2" = "blue", "Background 1+2" = "purple", "Other" = "grey70")
+  ) +
+  scale_shape_manual(
+    values = c("TRUE" = 6, "FALSE" = 16)
+  )
+
 
 ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
   geom_line(color = "grey70") +
@@ -357,20 +434,24 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
 #  .-- plot 4: plot of raw data and proref ----
 #
 
-# Select data
-data_all_backgr_sel <- data_backgr_all %>%
-  filter(PARAM == param, 
-         LATIN_NAME %in% species)
-
-data_proref_sel <- data_proref %>%
-  filter(PARAM == param, 
-         LATIN_NAME %in% species)
-
 # For setting default y axis range
-max_bg = data_all_backgr_sel %>%
+max_bg = data_backgr_sel %>%
   filter(Background %in% "Background") %>%
   pull(Concentration) %>%
   max()
+
+# test
+# ggplot(data_backgr_sel, aes(YEAR, Concentration)) +
+#   geom_jitter(
+#     aes(color = Station_bg, size = Background, shape = LOQ), width = 0.2) +
+#   scale_size_manual(values = c("Other"=1, "Background"=2)) +
+#   scale_shape_manual(values = c("Under LOQ" = 6, "Over LOQ" = 16)) +
+#   geom_hline(
+#     data = data_proref_sel, aes(yintercept = PROREF),
+#     colour = "red", linetype = "dashed") +
+#   scale_y_log10() +
+#   facet_wrap(vars(Analysis), nrow = 1) +
+#   theme_bw()
 
 create_proref_plot <- function(data, data_proref){
   gg1 <- ggplot(data, aes(YEAR, Concentration)) +
@@ -396,7 +477,7 @@ create_proref_plot <- function(data, data_proref){
   proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
   gg2 <- gg1 +
     geom_text(
-      data =data_proref_sel, aes(label = paste0("PROREF = ", PROREF),
+      data = data_proref_sel, aes(label = paste0("PROREF = ", PROREF),
                                  x = proreflabel_x, y = +Inf),
       colour = "red", hjust = 0, vjust = 1.5)
   
@@ -404,15 +485,17 @@ create_proref_plot <- function(data, data_proref){
 
 }
 
-gg_all <- create_proref_plot(data_all_backgr_sel, 
+gg_all <- create_proref_plot(data_backgr_sel, 
                              data_proref_sel)
-gg_bg <- create_proref_plot(data_all_backgr_sel %>% filter(Background %in% "Background"),
+gg_bg <- create_proref_plot(data_backgr_sel %>% filter(Background %in% "Background"),
                             data_proref_sel)
 
 # Show all data
 gg_all
 # Show all data, restrict y axis to background station data
 gg_all + ylim(0, max_bg)
-# Show background station data
+gg_all + ylim(0, max_bg) + scale_y_log10()
+# Show only background station data
 gg_bg
+gg_bg + scale_y_log10()
 
