@@ -88,15 +88,18 @@ data_proref <- data_all_backgr %>%
   summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
             .groups = "drop")
 
+writexl::write_xlsx(data_proref, "Data/55_proref.xlsx")
+
+
 #
 # VARIOUS DATA/PLOTS ----
 #
 
 #
-# . find largest differences
+# . number of background stations ---- 
 #
 
-result_diff <- result_detailed %>%
+number_of_backgr_stations <- result_detailed %>%
   filter(Background1b %in% "Background") %>%
   count(Analysis, PARAM, LATIN_NAME) %>%
   tidyr::pivot_wider(names_from = Analysis, values_from = n) %>%
@@ -109,7 +112,7 @@ result_diff <- result_detailed %>%
 # . largest differences, 1992-2022 vs 2003-2022
 #
 
-result_diff_summ <- result_diff %>%
+result_diff_summ <- number_of_backgr_stations %>%
   count(`Original (1992-2022)`, `Original (2003-2022)`)
 
 ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `Original (2003-2022)`, fill = n)) +
@@ -123,13 +126,13 @@ ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `Original (2003-202
     aes(label = n), color = "black", size = 3) +
   labs(title = "Number of background stations per substance, 1992-2022 vs 2003-2022")
 
-table(result_diff$`Original (1992-2022)`, result_diff$diff1)
+table(number_of_backgr_stations$`Original (1992-2022)`, number_of_backgr_stations$diff1)
 
 #
 # . largest differences, 1992-2022 vs 2003-2022
 #
 
-result_diff_summ <- result_diff %>%
+result_diff_summ <- number_of_backgr_stations %>%
   count(`Original (2003-2022)`, `LOQ-filtered (2003-2022)`)
 
 ggplot(result_diff_summ, aes(x = `Original (2003-2022)`, y = `LOQ-filtered (2003-2022)`, fill = n)) +
@@ -143,7 +146,7 @@ ggplot(result_diff_summ, aes(x = `Original (2003-2022)`, y = `LOQ-filtered (2003
     aes(label = n), color = "black", size = 3) +
   labs(title = "Number of background stations per substance, 2003-2022, without and with filtering LOQ")
 
-table(result_diff$`Original (1992-2022)`, result_diff$diff1)
+table(number_of_backgr_stations$`Original (1992-2022)`, number_of_backgr_stations$diff1)
 
 
 #
@@ -152,19 +155,41 @@ table(result_diff$`Original (1992-2022)`, result_diff$diff1)
 result_bystation <- result_detailed %>%
   # filter(grepl("30", Station)) %>%
   count(Analysis, LATIN_NAME, Station, Background1b) %>%
-  tidyr::pivot_wider(names_from = Background1b, values_from = n) %>%
+  tidyr::pivot_wider(names_from = Background1b, values_from = n, values_fill = 0) %>%
   mutate(fraction_background = Background/(Background + Other)) %>%
-  arrange(LATIN_NAME, Analysis, desc(fraction_background))
+  arrange(LATIN_NAME, Analysis, fraction_background)
 
 result_bystation_mussel <- result_bystation %>%
-  filter(Analysis == "2003-2022" & LATIN_NAME == "Mytilus edulis") %>%
+  filter(Analysis == "LOQ-filtered (2003-2022)" & LATIN_NAME == "Mytilus edulis") %>%
   mutate(Station = fct_inorder(Station))
 
-
-ggplot(result_bystation, aes(Station))
+ggplot(result_bystation_mussel, aes(Station, fraction_background)) +
+  geom_col() +
+  coord_flip()
 
 #
-# BBF etc.
+# . proref value with number of background stations -----
+#
+
+data_proref_wide <- data_proref %>%
+  tidyr::pivot_wider(names_from = Analysis, names_prefix = "proref ", values_from = PROREF) %>%
+  left_join(number_of_backgr_stations, by = join_by(LATIN_NAME, PARAM)) %>%
+  select(
+    LATIN_NAME, PARAM, 
+    `proref Original (1992-2022)`, n1 = `Original (1992-2022)`, 
+    `proref Original (2003-2022)`, n2 = `Original (2003-2022)`,
+    `proref LOQ-filtered (2003-2022)`, n3 = `LOQ-filtered (2003-2022)`)
+
+writexl::write_xlsx(
+  list(data_proref_wide,
+       data.frame(info = "n1, n2, n3 = number of background stations")), 
+  "Data/55_proref_wide.xlsx")
+
+#
+# BBF etc. ----
+#
+# Concluded (with Merete G, Anders, Kine) that all these are the same
+# Called BBJF, see 54
 #
 
 data_all2 %>%
