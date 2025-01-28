@@ -314,20 +314,36 @@ server <- function(input, output, session) {
   
   # Plot 2: Time range plot ----
   output$plot2 <- renderPlot({
-    req(selected_data())
-    result_sel <- selected_data()$result_sel
     
-    if (nrow(result_sel) == 0) return(NULL)
+    # overall median by station 
     
-    ggplot(result_sel, aes(x = Min_year, xend = Max_year, y = Median2)) +
-      geom_segment(aes(col = Background1b)) +
+    data_overall_median <- selected_data()$data_backgr_sel %>%
+      ungroup() %>%
+      group_by(Analysis, Station) %>%
+      summarize(Median = median(Concentration),
+                Min_year = min(YEAR),
+                Max_year = max(YEAR),
+                Station_bg = first(Station_bg),
+                .groups = "drop") %>%
+      mutate(
+        Background = case_when(
+          !is.na(Station_bg) ~ "Background",
+          is.na(Station_bg) ~ "Other")) 
+    
+    if (nrow(data_overall_median) == 0) return(NULL)
+    
+    # overall median + time range plot 
+
+    ggplot(data_overall_median %>%
+             arrange(Analysis, desc(Background)), aes(x = Min_year, xend = Max_year, y = Median)) +
+      geom_segment(aes(col = Background)) +
+      # Proref line
+      geom_hline(
+        data = selected_data()$data_proref_sel, aes(yintercept = PROREF),
+        colour = "blue2", linetype = "dashed") +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis)) +
-      theme_bw() +
-      theme(
-        strip.text = element_text(size = 12), 
-        legend.text =  element_text(size = 12)
-      )
+      facet_wrap(vars(Analysis))
+    
   })
   
   # Plot 3: Medians plot ----
