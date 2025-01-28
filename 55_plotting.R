@@ -25,8 +25,17 @@ datasets <- tibble::tribble(
   "LOQ-filtered (2003-2022)", "54_data_2024_loqfilter3x.rds", "Data/54_dataseries_2024_loqfilter3x.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds", 2003, 2022
 )
 
+# datasets
+# data_all -> data_all_comb
+# df_series_sel
+# result_detailed -> lookup_background (only used once|)
+# data_all_comb + lookup_background -> data_backgr_all
+
+
+
+
 # Full data (note: INCLUDING )
-data_all2 <- readRDS("Data/54_data_2024.rds") %>%
+data_all <- readRDS("Data/54_data_2024.rds") %>%
   select(STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1)
 df_series_sel <- readRDS("Data/54_dataseries_2024.rds")
 
@@ -53,7 +62,7 @@ lookup_background <- result_detailed %>%
 #
 # .-- raw data ----
 # 
-data_all2_comb <- bind_rows(
+data_all_comb <- bind_rows(
   bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_rawdata[1]) %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
   bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_rawdata[2]) %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
   bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_rawdata[3]) %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
@@ -69,7 +78,7 @@ data_backgr_all <- lookup_background %>%
   filter(!grepl("MCCP__", PARAM)) %>%
   filter(!grepl("Krysen__", PARAM)) %>%
   select(Analysis, Station, LATIN_NAME, PARAM, Background) %>%
-  left_join(data_all2_comb %>%
+  left_join(data_all_comb %>%
               filter(!is.na(Concentration)) %>%
               select(Analysis, Station = STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1), 
             by = join_by(Analysis, Station, LATIN_NAME, PARAM), 
@@ -216,19 +225,19 @@ writexl::write_xlsx(
 # Called BBJF, see 54
 #
 
-data_all2 %>%
+data_all %>%
   filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
   xtabs(~YEAR + PARAM, .)
 
-data_all2 %>%
+data_all %>%
   filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
   xtabs(~YEAR + STATION_CODE, .)
 
-data_all2 %>%
+data_all %>%
   filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I131A", "30A")) %>%
   xtabs(~YEAR + PARAM, .)
 
-data_all2 %>%
+data_all %>%
   filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I301", "I131A", "30A", "I969")) %>%
   mutate(LOQ = ifelse(is.na(FLAG1), "Over LOQ", "Under LOQ")) %>%
   ggplot(aes(YEAR, Concentration, shape = LOQ, colour = PARAM)) +
@@ -287,7 +296,7 @@ data_proref_sel <- data_proref %>%
          LATIN_NAME == species) %>%
   mutate(Analysis = fct_drop(Analysis))
 
-data_sel <- data_all2_comb %>%
+data_sel <- data_all_comb %>%
   filter(Analysis %in% c(analysis1, analysis2),
          PARAM == param,
          LATIN_NAME == species) %>%
