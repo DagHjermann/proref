@@ -3,14 +3,17 @@
 # Comparing 1992-2022 with 2003-2022
 #
 
-
 library(dplyr)
 library(ggplot2)
 library(forcats)
 library(ggrepel)
 
 #
-# data ----
+# GET/CALCULATE DATA ----
+#
+
+#
+# Read data ----
 #
 
 datasets <- tibble::tribble(
@@ -38,15 +41,16 @@ result_detailed <- bind_rows(
 
 
 #
-# .-- raw data and proref value (90th percentile)----
-#
-# Proref value = 90th percentile 
+# Calculate proref value ----
 #
 
 lookup_background <- result_detailed %>%
   select(Analysis, Station, LATIN_NAME, PARAM, Background1b) %>%
   rename(Background = Background1b)
 
+#
+# .-- raw data ----
+# 
 data_all2_comb <- bind_rows(
   bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_rawdata[1]) %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
   bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_rawdata[2]) %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
@@ -54,6 +58,7 @@ data_all2_comb <- bind_rows(
 )
 
 data_all_backgr <- lookup_background %>%
+  # These parameters are only found in raw data file number 1 - they were fixed later
   filter(!grepl("SCCP__", PARAM)) %>%
   filter(!grepl("MCCP__", PARAM)) %>%
   filter(!grepl("Krysen__", PARAM)) %>%
@@ -75,14 +80,13 @@ data_all_backgr <- lookup_background %>%
     TRUE ~ "Under LOQ"))
 
 #
-# Proref
+# .-- proref value (90th percentile)----
 #
 data_proref <- data_all_backgr %>% 
   filter(Background %in% "Background") %>%
   group_by(Analysis, LATIN_NAME, PARAM) %>%
   summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
             .groups = "drop")
-
 
 #
 # VARIOUS DATA/PLOTS ----
