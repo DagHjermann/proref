@@ -60,7 +60,7 @@ data_all2_comb <- bind_rows(
 #
 # .-- background stations ----
 #
-data_all_backgr <- lookup_background %>%
+data_backgr_all <- lookup_background %>%
   # These parameters are only found in raw data file number 1 - they were fixed later
   filter(!grepl("SCCP__", PARAM)) %>%
   filter(!grepl("MCCP__", PARAM)) %>%
@@ -85,7 +85,7 @@ data_all_backgr <- lookup_background %>%
 #
 # .-- proref value (90th percentile)----
 #
-data_proref <- data_all_backgr %>% 
+data_proref <- data_backgr_all %>% 
   filter(Background %in% "Background") %>%
   group_by(Analysis, LATIN_NAME, PARAM) %>%
   summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
@@ -358,7 +358,7 @@ ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentrati
 #
 
 # Select data
-data_all_backgr_sel <- data_all_backgr %>%
+data_all_backgr_sel <- data_backgr_all %>%
   filter(PARAM == param, 
          LATIN_NAME %in% species)
 
