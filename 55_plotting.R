@@ -22,20 +22,28 @@ datasets <- tibble::tribble(
   ~analysis_name, ~fn_rawdata, ~fn_series, ~fn_result, ~year1, ~year2,
   "Original (1992-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2024-11-29.rds", 1992, 2022,
   "Original (2003-2022)", "54_data_2024.rds", "54_dataseries_2024.rds", "54_result_detailed_2003-2022_2025-01-05-T1812.rds", 2003, 2022,
-  "LOQ-filtered (2003-2022)", "54_data_2024_loqfilter3x.rds", "Data/54_dataseries_2024_loqfilter3x.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds", 2003, 2022
+  "LOQ-filtered (2003-2022)", "54_data_2024_loqfilter3x.rds", "54_dataseries_2024_loqfilter3x.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds", 2003, 2022
 )
 
+
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
+# Names of data frames:
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
+#
 # datasets
 # data_all -> data_all_comb
 # result_detailed -> lookup_background (only used once|)
-# data_all_comb + lookup_background -> data_backgr_all
+# data_all_comb + lookup_background -> data_backgr_all -> data_proref
+# result_detailed -> number_of_backgr_stations -> temporary_plotdata
+# result_detailed -> result_bystation
+# selection by parameter + species:
+#   result_detailed -> result_sel
+#   data_proref -> data_proref_sel
+#   data_all -> data_sel
+#   data_backgr_all -> data_backgr_sel
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 
-
-
-
-# Full data (note: INCLUDING )
-data_all <- readRDS("Data/54_data_2024.rds") %>%
-  select(STATION_CODE, LATIN_NAME, PARAM, YEAR, Concentration, FLAG1)
 
 read_data <- function(fn){
   readRDS(paste0("Data/", fn))
@@ -125,17 +133,17 @@ number_of_backgr_stations <- result_detailed %>%
 # . largest differences, 1992-2022 vs 2003-2022
 #
 
-result_diff_summ <- number_of_backgr_stations %>%
+temporary_plotdata <- number_of_backgr_stations %>%
   count(`Original (1992-2022)`, `Original (2003-2022)`)
 
-ggplot(result_diff_summ, aes(x = `Original (1992-2022)`, y = `Original (2003-2022)`, fill = n)) +
+ggplot(temporary_plotdata, aes(x = `Original (1992-2022)`, y = `Original (2003-2022)`, fill = n)) +
   geom_tile() +
   scale_fill_viridis_c() +
   geom_text(
-    data = result_diff_summ %>% filter(n < 300), 
+    data = temporary_plotdata %>% filter(n < 300), 
     aes(label = n), color = "white", size = 3) +
   geom_text(
-    data = result_diff_summ %>% filter(n >= 300), 
+    data = temporary_plotdata %>% filter(n >= 300), 
     aes(label = n), color = "black", size = 3) +
   labs(title = "Number of background stations per substance, 1992-2022 vs 2003-2022")
 
@@ -145,17 +153,17 @@ table(number_of_backgr_stations$`Original (1992-2022)`, number_of_backgr_station
 # . largest differences, 2003-2022 vs 2003-2022
 #
 
-result_diff_summ <- number_of_backgr_stations %>%
+temporary_plotdata <- number_of_backgr_stations %>%
   count(`Original (2003-2022)`, `LOQ-filtered (2003-2022)`)
 
-ggplot(result_diff_summ, aes(x = `Original (2003-2022)`, y = `LOQ-filtered (2003-2022)`, fill = n)) +
+ggplot(temporary_plotdata, aes(x = `Original (2003-2022)`, y = `LOQ-filtered (2003-2022)`, fill = n)) +
   geom_tile() +
   scale_fill_viridis_c() +
   geom_text(
-    data = result_diff_summ %>% filter(n < 100), 
+    data = temporary_plotdata %>% filter(n < 100), 
     aes(label = n), color = "white", size = 3) +
   geom_text(
-    data = result_diff_summ %>% filter(n >= 100), 
+    data = temporary_plotdata %>% filter(n >= 100), 
     aes(label = n), color = "black", size = 3) +
   labs(title = "Number of background stations per substance, 2003-2022, without and with filtering LOQ")
 
