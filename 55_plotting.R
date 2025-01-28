@@ -266,7 +266,7 @@ data_all_comb[[1]] %>%
 #
 
 param <- "CU__WW"
-param <- "CB229__WW"
+param <- "CB118__WW"
 species_common <- "mussel"
 species_common <- "cod"
 
@@ -412,39 +412,13 @@ ggplot(data_medians_sel %>% filter(Background != "Other"),
   geom_line(
     data = data_medians_sel %>% filter(Background %in% "Other"), color = "grey70") +
   geom_line(aes(color = Station_bg)) +
+  geom_point(aes(color = Station_bg, shape = Half_below_LOQ)) +
+  scale_shape_manual(values = c("TRUE" = 6, "FALSE" = 16)) +
   geom_hline(data = data_proref_sel, aes(yintercept = PROREF), 
              linetype = "dashed", colour = "blue") +
   scale_y_log10() +
   facet_wrap(vars(Analysis))
 
-ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
-  scale_y_log10() +
-  facet_wrap(vars(Analysis))
-  geom_line(data = data_medians_sel %>% filter(Background != "Other"), 
-            aes(color = Background)) +
-  geom_point(data = data_medians_sel %>% filter(Background != "Other"), 
-             aes(color = Background, shape = Half_below_LOQ)) +
-  scale_color_manual(
-    values = c("Background 1" = "red", "Background 2" = "blue", "Background 1+2" = "purple", "Other" = "grey70")
-  ) +
-  scale_shape_manual(
-    values = c("TRUE" = 6, "FALSE" = 16)
-  )
-
-
-ggplot(data_medians_sel %>% filter(Background == "Other"), aes(YEAR, Concentration, group = Station)) +
-  geom_line(color = "grey70") +
-  scale_y_log10() +
-  geom_line(data = data_medians_sel %>% filter(Background != "Other"), 
-            aes(color = Background)) +
-  geom_point(data = data_medians_sel %>% filter(Background != "Other"), 
-             aes(color = Background, shape = Half_below_LOQ)) +
-  scale_color_manual(
-    values = c("Background 1" = "red", "Background 2" = "blue", "Background 1+2" = "purple", "Other" = "grey70")
-  ) +
-  scale_shape_manual(
-    values = c("TRUE" = 6, "FALSE" = 16)
-  )
 
 #
 #  .-- plot 4: plot of raw data and proref ----
@@ -477,7 +451,7 @@ create_proref_plot <- function(data, data_proref){
     scale_shape_manual(values = c("Under LOQ" = 6, "Over LOQ" = 16)) +
     geom_hline(
       data = data_proref, aes(yintercept = PROREF),
-      colour = "red", linetype = "dashed") +
+      colour = "blue", linetype = "dashed", linewidth = 1) +
     facet_wrap(vars(Analysis), nrow = 1) +
     theme_bw()
   
@@ -495,7 +469,7 @@ create_proref_plot <- function(data, data_proref){
     geom_text(
       data = data_proref_sel, aes(label = paste0("PROREF = ", PROREF),
                                  x = proreflabel_x, y = +Inf),
-      colour = "red", hjust = 0, vjust = 1.5)
+      colour = "blue", hjust = 0, vjust = 1.5)
   
   gg2
 
