@@ -31,7 +31,6 @@ datasets <- tibble::tribble(
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o
 #
 # datasets
-# data_all -> data_all_comb
 # result_detailed -> lookup_background (only used once|)
 # data_all_comb + lookup_background -> data_backgr_all -> data_proref
 # result_detailed -> number_of_backgr_stations -> temporary_plotdata
@@ -231,20 +230,22 @@ writexl::write_xlsx(
 # Called BBJF, see 54
 #
 
-data_all %>%
-  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
+if (FALSE){
+
+data_all_comb %>%
+  filter(Analysis == "Original (1992-2022)" & PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
   xtabs(~YEAR + PARAM, .)
 
-data_all %>%
-  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
+data_all_comb[[1]] %>%
+  filter(Analysis == "Original (1992-2022)" & PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW")) %>%
   xtabs(~YEAR + STATION_CODE, .)
 
-data_all %>%
-  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I131A", "30A")) %>%
+data_all_comb[[1]] %>%
+  filter(Analysis == "Original (1992-2022)" & PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I131A", "30A")) %>%
   xtabs(~YEAR + PARAM, .)
 
-data_all %>%
-  filter(PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I301", "I131A", "30A", "I969")) %>%
+data_all_comb[[1]] %>%
+  filter(Analysis == "Original (1992-2022)" & PARAM %in% c("BBF__WW", "BBJF__WW", "BBJKF__WW") & STATION_CODE %in% c("I301", "I131A", "30A", "I969")) %>%
   mutate(LOQ = ifelse(is.na(FLAG1), "Over LOQ", "Under LOQ")) %>%
   ggplot(aes(YEAR, Concentration, shape = LOQ, colour = PARAM)) +
   # geom_smooth(se = FALSE) +
@@ -253,7 +254,7 @@ data_all %>%
   facet_wrap(vars(STATION_CODE)) +
   theme_bw()
   
-
+}
 
 
 #
