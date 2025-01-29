@@ -1,0 +1,72 @@
+STATION_CODE,Station_order,Lat,Long,Station_name,Station_short,Water_region
+19N,1,79.004,12.11,"Breøyane, Kongsfjorden, Svalbard",Breøyane,Svalbard
+19B,2,78.17,13.46,"Isfjorden, Svalbard",Isfjorden,Svalbard
+20B,3,78.2623,15.4795,"Longyearbyen, Svalbard",Longyearbyen,Svalbard
+11G,4,69.89953,29.7419,"Brashavn, Outer Varangerfjord",Brashavn,Troms og Finnmark
+11X,5,69.8993,29.741,"Brashavn, Outer Varangerfjord",Brashavn,Troms og Finnmark
+10A2,6,70.137283,30.341745,"Skallnes, Outer Varangerfjord",Skallnes,Troms og Finnmark
+10B,7,69.81623,29.7602,"Kjøfjord, Outer Varangerfjord",Kjøfjord,Troms og Finnmark
+45B2,8,70.65,23.6333333333333,Hammerfest harbour area,Hammerfest harbour,Troms og Finnmark
+43B2,9,69.653,18.974,Tromsø harbour area,Tromsø harbour,Troms og Finnmark
+98A2,10,68.24917,14.6627,Svolvær airport area,Svolvær airport,Nordland
+98G,11,68.24699,14.66641,Svolvær airport area,Svolvær airport,Nordland
+98B1,12,68.18577,14.708138,"Austnesfjord, Lofoten",Austnesfjord,Nordland
+97A2,13,67.41271,14.621928,"Mjelle, Bodø area",Mjelle,Nordland
+97A3,14,67.296306,14.395639,Bodø harbour,Bodø harbour,Nordland
+I964,15,66.32166668,14.13283333,"Toraneskaien, Inner Ranfjord",Toraneskaien,Nordland
+I965,16,66.31162,14.12537,"Moholmen, Inner Ranfjord",Moholmen,Nordland
+I969,17,66.28022,14.0349,"Bjørnbærviken, Inner Ranfjord",Bjørnbærviken,Nordland
+96B,18,66.04437,12.503554,Sandnessjøen area,Sandnessjøen,Nordland
+91A2,19,63.651438,9.56386,"Ørland area, Outer Trondheimsfjord",Ørland area,Trøndelag
+80B,20,63.445624,10.371726,Trondheim harbour,Trondheim harbour,Trøndelag
+28B,21,62.4677833333333,6.06861666666667,Ålesund harbour area,Ålesund harbour,Møre og Romsdal
+28A2,22,62.465851,6.239601,Ålesund harbour,Ålesund harbour,Møre og Romsdal
+26A2,23,61.9362166666667,5.04878333333333,"Vågsvåg, Outer Nordfjord",Vågsvåg,Vestland
+I241,24,60.4007721666667,5.303955,"Nordnes, Bergen harbour",Nordnes,Vestland
+24B,25,60.39664,5.27069,Bergen harbour area,Bergen harbour,Vestland
+69A,26,59.984,5.7545,"Terøya, Outer Hardangerfjord",Terøya,Vestland
+65A,27,60.2423333333333,6.15266666666667,"Vikingneset, Mid Hardangerfjord",Vikingneset,Vestland
+63A,28,60.42096,6.40502,"Ranaskjer, Ålvik, Hardangerfjord",Ranaskjer,Vestland
+64A,29,60.4239,6.6223,"Utne, Outer Sørfjord",Utne,Vestland
+57A,30,60.387073,6.689524,"Krossanes, Outer Sørfjord",Krossanes,Vestland
+56A,31,60.2205,6.602,"Kvalnes, Mid Sørfjord",Kvalnes,Vestland
+53B,32,60.09727,6.539719,Inner Sørfjord,Inner Sørfjord,Vestland
+53F,33,60.09727,6.539719,Inner Sørfjord,Inner Sørfjord,Vestland
+52A,34,60.096771,6.532933,"Eitrheimsneset, Inner Sørfjord",Eitrheimsneset,Vestland
+51A,35,60.084292,6.550954,"Byrkjenes, Inner Sørfjord",Byrkjenes,Vestland
+23B,36,59.895618,5.108565,"Bømlo, Outer Selbjørnfjord",Bømlo,Vestland
+22A,37,59.58711,5.15203,"Espevær, Outer Bømlafjord",Espevær,Vestland
+22G,38,59.5836666666667,5.1445,"Espevær, Outer Bømlafjord",Espevær,Vestland
+227G2,39,59.3396,5.3122,"Melandsholmen, Mid Karmsundet",Melandsholmen,Rogaland
+131G,40,58.02843,7.69902,"Lastad, Søgne",Lastad,Agder
+15A,41,58.04605,6.9159,"Gåsøya-Ullerøya, Farsund",Gåsøya,Agder
+15G,42,58.0493333333333,6.90116666666667,"Gåsøya-Ullerøya, Farsund",Gåsøya,Agder
+15B,43,58.051384,6.746898,"Skågskjera, Farsund",Skågskjera,Agder
+I131A,44,58.05557,7.7083,"Lastad, Søgne",Lastad,Agder
+I133,45,58.1316666666667,8.00166666666667,"Odderøya, Kristiansand harbour",Odderøya,Agder
+13B,46,58.1328333333333,7.9885,Kristiansand harbour area,Kristiansand harbour,Agder
+76G,47,58.728,9.2755,"Risøya, Risør",Risøya,Vestfold og Telemark
+76A,48,58.7327,9.28104,"Risøya, Risør",Risøya,Vestfold og Telemark
+76A2,49,58.7327,9.28104,"Risøya, Risør",Risøya,Vestfold og Telemark
+71G,50,58.98496,9.80458,"Fugløyskjær, Outer Langesundfjord",Fugløyskjær,Vestfold og Telemark
+71A,51,59.0233333333333,9.75366666666667,"Bjørkøya, Langesundfjord",Bjørkøya,Vestfold og Telemark
+I712,52,59.0453333333333,9.70683333333333,"Croftholmen, Langesundfjord",Croftholmen,Vestfold og Telemark
+71B,53,59.0465,9.70275,"Stathelle area, Langesundfjord",Stathelle area,Vestfold og Telemark
+I714,54,59.0514,9.70384,"Sylterøya, Langesundfjord",Sylterøya,Vestfold og Telemark
+36A,55,59.0274,10.525,"Færder, Outer Oslofjord",Færder,Vestfold og Telemark
+36G,56,59.02776,10.5256,"Færder, Outer Oslofjord",Færder,Vestfold og Telemark
+36B,57,59.0405,10.4358333333333,"Tjøme, Outer Oslofjord",Tjøme,Vestfold og Telemark
+36F,58,59.0405,10.4358333333333,"Tjøme, Outer Oslofjord",Tjøme,Vestfold og Telemark
+36A1,59,59.07357,10.42522,"Tjøme, Outer Oslofjord",Tjøme,Vestfold og Telemark
+33F,60,59.5283333333333,10.35,"Sande, Mid Oslofjord",Sande,Vestfold og Telemark
+35A,61,59.48359,10.49499,"Mølen, Mid Oslofjord",Mølen,Innlandet og Viken
+31A,62,59.6155,10.6515,"Solbergstrand, Mid Oslofjord",Solbergstrand,Innlandet og Viken
+I306,63,59.7133333333333,10.5551666666667,"Håøya, Inner Oslofjord",Håøya,Innlandet og Viken
+I307,64,59.7445,10.5228333333333,"Ramtonholmen, Inner Oslofjord",Ramtonholmen,Innlandet og Viken
+30B,65,59.812653,10.551829,Inner Oslofjord,Inner Oslofjord,Innlandet og Viken
+I304,66,59.8513333333333,10.589,"Gåsøya, Inner Oslofjord",Gåsøya,Innlandet og Viken
+30A,67,59.88362,10.711,"Gressholmen, Inner Oslofjord",Gressholmen,Innlandet og Viken
+I301,68,59.9053333333333,10.7363333333333,"Akershuskaia, Inner Oslofjord",Akershuskaia,Innlandet og Viken
+I023,69,59.095112,11.136779,"Singlekalven, Hvaler",Singlekalven,Innlandet og Viken
+I024,70,59.079053,10.987336,"Kirkøy, Hvaler",Kirkøy,Innlandet og Viken
+02B,71,59.06482,10.97354,"Kirkøy, Hvaler",Kirkøy,Innlandet og Viken

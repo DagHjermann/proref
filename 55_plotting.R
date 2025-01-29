@@ -109,7 +109,9 @@ data_proref <- data_backgr_all %>%
             Median = quantile(Concentration, 0.5) %>% signif(3),
             .groups = "drop")
 
-writexl::write_xlsx(data_proref, "Data/55_proref.xlsx")
+if (FALSE){
+  writexl::write_xlsx(data_proref, "Data/55_proref.xlsx")
+}
 
 #
 # VARIOUS DATA/PLOTS ----
@@ -218,10 +220,12 @@ ggplot(data_proref_wide, aes(`proref Original (2003-2022)`, `proref LOQ-filtered
   scale_x_log10() +
   scale_y_log10()
 
-writexl::write_xlsx(
-  list(data_proref_wide,
-       data.frame(info = "n1, n2, n3 = number of background stations")), 
-  "Data/55_proref_wide.xlsx")
+if (FALSE){
+  writexl::write_xlsx(
+    list(data_proref_wide,
+         data.frame(info = "n1, n2, n3 = number of background stations")), 
+    "Data/55_proref_wide.xlsx")
+}
 
 #
 # BBF etc. ----
@@ -488,4 +492,42 @@ gg_all + ylim(0, max_bg) + scale_y_log10()
 # Show only background station data
 gg_bg
 gg_bg + scale_y_log10()
+
+
+# MAP ----
+
+# Map data - copy from 'Input_data':
+# milkys_example_coord <- readxl::read_excel("../Input_data/Files_to_Jupyterhub_2021/Kartbase_edit.xlsx")
+# readr::write_csv(milkys_example_coord, "Input_data/coordinates.csv")
+
+library(leaflet)
+
+stations <- read.csv("Input_data/coordinates.csv") %>%
+  rename(Station = STATION_CODE, x = Long, y = Lat)  %>%
+  filter(Station %in% unique(result_detailed$Station))
+
+lookup_species <- data.frame(
+  species = c("Cod", "Blue mussel"),
+  LATIN_NAME = c("Gadus morhua", "Mytilus edulis"),
+  color = c("red", "blue")
+)
+
+stations_for_map <- result_detailed %>%
+  distinct(Station, LATIN_NAME) %>%
+  left_join(stations, by = join_by(Station)) %>%
+  left_join(lookup_species, by = join_by(LATIN_NAME))
+
+leaflet() %>% 
+  setView(lng = 13 , lat = 66, zoom = 4) %>%
+  addTiles() %>%
+  addCircleMarkers(data=stations_for_map, 
+                   ~x , ~y, layerId=~Station, popup=~Station, 
+                   color="black",  fillColor=~color, 
+                   radius=5, weight = 1, stroke = TRUE, fillOpacity = 0.8)
+
+  
+  # addCircleMarkers(data=stations_selected_click, ~x , ~y, radius=12 , color="green",  fillColor="green", stroke = TRUE) %>%
+  # addCircleMarkers(data=stations_selected_species, ~x , ~y, layerId=~STATION_CODE, popup=~STATION_CODE, radius=8 , color="black",  fillColor=~color, stroke = TRUE, fillOpacity = 0.8)
+
+
 
