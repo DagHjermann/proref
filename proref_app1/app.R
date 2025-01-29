@@ -330,11 +330,9 @@ server <- function(input, output, session) {
           !is.na(Station_bg) ~ "Background",
           is.na(Station_bg) ~ "Other")) 
     
-    if (nrow(data_overall_median) == 0) return(NULL)
-    
     # overall median + time range plot 
 
-    ggplot(data_overall_median %>%
+    gg <- ggplot(data_overall_median %>%
              arrange(Analysis, desc(Background)), aes(x = Min_year, xend = Max_year, y = Median)) +
       geom_segment(aes(col = Background)) +
       # Proref line
@@ -342,7 +340,19 @@ server <- function(input, output, session) {
         data = selected_data()$data_proref_sel, aes(yintercept = PROREF),
         colour = "blue2", linetype = "dashed") +
       expand_limits(y = 0) +
-      facet_wrap(vars(Analysis))
+      facet_wrap(vars(Analysis)) +
+      labs(subtitle = "Median + time range for each time series (red = background stations). Blue line = PROREF") +
+      theme_bw() +
+      theme(
+        strip.text = element_text(size = 12), 
+        legend.text =  element_text(size = 12)
+      ) 
+    
+    if (nrow(data_overall_median) == 0) { 
+      return(NULL)
+    } else {
+      return(gg)
+    }
     
   })
   
@@ -377,6 +387,7 @@ server <- function(input, output, session) {
                  linetype = "dashed", colour = "blue") +
       scale_y_log10() +
       facet_wrap(vars(Analysis)) +
+      labs(subtitle = "Annual medians for each time series (coloured = background stations). Blue line = PROREF") +
       theme_bw() +
       theme(
         strip.text = element_text(size = 12), 
@@ -408,7 +419,12 @@ server <- function(input, output, session) {
           data = data_proref, aes(yintercept = PROREF),
           colour = "blue", linetype = "dashed", linewidth = 1) +
         facet_wrap(vars(Analysis), nrow = 1) +
-        theme_bw()
+        labs(subtitle = "All values (coloured = background stations). Blue line = PROREF") +
+        theme_bw() +
+        theme(
+          strip.text = element_text(size = 12), 
+          legend.text =  element_text(size = 12)
+        )
       
       # If we have max 8 stations, use brewer Set1 palette, otherwise we stick 
       #   with the default palette
