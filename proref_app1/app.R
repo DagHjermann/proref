@@ -18,7 +18,6 @@ datasets <- tibble::tribble(
   "LOQ-filtered (2003-2022)", "54_data_2024_loqfilter3x.rds", "54_dataseries_2024_loqfilter3x.rds", "54_result_detailed_2003-2022_2025-01-20-T1603.rds", 2003, 2022
 )
 
-
 read_data <- function(fn){
   readRDS(paste0("../Data/", fn))
 }
@@ -148,43 +147,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  # reactive: selected_analysis ----
-  # selected_analysis <- reactive({
-  #   
-  #   d1 <- which(datasets$analysis_name == input$analysis1)
-  #   d2 <- which(datasets$analysis_name == input$analysis2)
-  #   result_txt1 <- datasets$analysis_name[d1]
-  #   result_txt2 <- datasets$analysis_name[d2]
-  #   
-  # 
-  #   
-  #   # if uncommented:
-  #   # browser()
-  #   # ...this shows that
-  #   # lookup_background has 29375 rows
-  #   # data_all2 has 2223050 rows
-  #   # data_all_backgr has 3570728 rows
-  #   
-  #   
-  #   #
-  #   # Proref
-  #   #
-  #   data_proref <- data_all_backgr %>% 
-  #     filter(Background %in% "Background") %>%
-  #     group_by(Analysis, LATIN_NAME, PARAM) %>%
-  #     summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3))
-  #   
-  #   list(
-  #     result_sel = result_sel,
-  #     data_proref_sel = data_proref_sel,
-  #     data_sel = data_sel,
-  #     data_backgr_sel = data_backgr_sel
-  #   )
-  #   
-  # })
-  
   # reactive: selected_data ----
   # Reactive values for filtered data
+  
   selected_data <- reactive({
     
     analysis1 <- input$analysis1
@@ -225,23 +190,6 @@ server <- function(input, output, session) {
              LATIN_NAME == species) %>%
       mutate(Analysis = fct_drop(Analysis))
     
-    # browser()
-    
-    # req(selected_analysis())
-    # result_sel <- selected_analysis()$result_sel
-    # data_proref_sel <- selected_analysis()$data_proref_sel
-    # data_sel <- selected_analysis()$data_sel
-    # data_backgr_sel <- selected_analysis()$data_backgr_sel
-    
-
-    # Filter result_detailed based on partial parameter match
-    # param_pattern <- input$param
-    # matching_params <- unique(result_detailed$PARAM[grepl(param_pattern, result_detailed$PARAM, ignore.case = TRUE)])
-
-    # # Update result_sel
-    # result_sel <- result_detailed %>%
-    #   filter(PARAM %in% input$param & LATIN_NAME == species)
-    
     # For plotting line at 2x the cleanest station
     line_2x_cleanest <- result_sel %>%
       group_by(Analysis) %>%
@@ -264,16 +212,6 @@ server <- function(input, output, session) {
          max_bg = max_bg)
     
   })
-  
-  # Show matching parameters
-  # output$param_info <- renderText({
-  #   data <- selected_data()
-  #   if (nrow(data$result_sel) == 0) {
-  #     return("No matching parameters found")
-  #   }
-  #   paste("Matching parameter(s):", 
-  #         paste(unique(data$result_sel$PARAM), collapse = ", "))
-  # })
   
   # Plot 1: Algorithm plot ----
   output$plot1 <- renderPlot({
