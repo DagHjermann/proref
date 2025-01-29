@@ -349,69 +349,51 @@ server <- function(input, output, session) {
   # Plot 3: Medians plot ----
   output$plot3 <- renderPlot({
     
-    req(selected_analysis())
-    result_txt1 <- selected_analysis()$result_txt1
-    result_txt2 <- selected_analysis()$result_txt2
+    # median by station and year
     
-    req(selected_data())
-    data_sel <- selected_data()$data_sel
-    result_sel <- selected_data()$result_sel
-    
-    # browser()
-    
-    if (nrow(result_sel) == 0) return(NULL)
-    
-    # Get background stations
-    bg1 <- result_sel %>%
-      filter(Analysis == result_txt1, Background1b == "Background") %>%
-      pull(Station)
-    bg2 <- result_sel %>%
-      filter(Analysis == result_txt2, Background1b == "Background") %>%
-      pull(Station)
-    
-    # Calculate medians
-    data_medians_sel <- data_sel %>%
-      group_by(STATION_CODE, YEAR) %>%
+    data_medians_sel <- selected_data()$data_backgr_sel %>%
+      ungroup() %>%
+      group_by(Analysis, Station, YEAR) %>%
       summarize(Concentration = median(Concentration),
                 Percent_below_LOQ = mean(!is.na(FLAG1))*100,
                 Half_below_LOQ = (Percent_below_LOQ >= 50),
+                Station_bg = first(Station_bg),
                 .groups = "drop") %>%
-      rename(Station = STATION_CODE) %>%
       mutate(
         Background = case_when(
-          (Station %in% bg1) & !(Station %in% bg2) ~ "Background 1",
-          !(Station %in% bg1) & (Station %in% bg2) ~ "Background 2",
-          (Station %in% bg1) & (Station %in% bg2) ~ "Background 1+2",
-          TRUE ~ "Other"),
-        Background = factor(Background, 
-                            levels = c("Background 1", "Background 2", 
-                                       "Background 1+2", "Other"))
-      ) %>%
-      arrange(rev(Background))
+          !is.na(Station_bg) ~ "Background",
+          is.na(Station_bg) ~ "Other"))
     
-    ggplot(data_medians_sel %>% filter(Background == "Other"), 
-           aes(YEAR, Concentration, group = Station)) +
-      geom_line(color = "grey70") +
+    #  plot 
+    
+    gg <- ggplot(data_medians_sel %>% filter(Background != "Other"), 
+                 aes(YEAR, Concentration, group = Station)) +
+      geom_line(
+        data = data_medians_sel %>% filter(Background %in% "Other"), color = "grey70") +
+      geom_line(aes(color = Station_bg)) +
+      geom_point(aes(color = Station_bg, shape = Half_below_LOQ)) +
+      scale_shape_manual(values = c("TRUE" = 6, "FALSE" = 16)) +
+      geom_hline(data = selected_data()$data_proref_sel, aes(yintercept = PROREF), 
+                 linetype = "dashed", colour = "blue") +
       scale_y_log10() +
-      geom_line(data = data_medians_sel %>% filter(Background != "Other"), 
-                aes(color = Background)) +
-      geom_point(data = data_medians_sel %>% filter(Background != "Other"), 
-                 aes(color = Background, shape = Half_below_LOQ)) +
-      scale_color_manual(
-        values = c("Background 1" = "red", "Background 2" = "blue", 
-                   "Background 1+2" = "purple", "Other" = "grey70")
-      ) +
-      scale_shape_manual(
-        values = c("TRUE" = 6, "FALSE" = 16)
-      ) +
+      facet_wrap(vars(Analysis)) +
       theme_bw() +
       theme(
         strip.text = element_text(size = 12), 
         legend.text =  element_text(size = 12)
       )
+    
+    if (nrow(data_medians_sel) == 0) { 
+      return(NULL)
+    } else {
+      return(gg)
+    }
+    
   })
   
-  # Plot 4: raw data and proref plot ----
+  
+  # Plot 4: raw data and proref plot ----  
+  
   output$plot4 <- renderPlot({
     req(selected_data())
     data_all_backgr_sel <- selected_data()$data_all_backgr_sel
