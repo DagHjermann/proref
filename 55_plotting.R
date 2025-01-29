@@ -467,7 +467,7 @@ create_proref_plot <- function(data, data_proref){
   proreflabel_x <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range[1]
   gg2 <- gg1 +
     geom_text(
-      data = data_proref_sel, aes(label = paste0("PROREF = ", PROREF),
+      data = data_proref, aes(label = paste0("PROREF = ", PROREF),
                                  x = proreflabel_x, y = +Inf),
       colour = "blue", hjust = 0, vjust = 1.5)
   
