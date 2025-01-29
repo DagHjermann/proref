@@ -132,6 +132,7 @@ ui <- fluidPage(
         tabPanel("Time Range Plot", plotOutput("plot2")),
         tabPanel("Medians Plot", plotOutput("plot3")),
         tabPanel("Raw data Plot", plotOutput("plot4"),
+                 shiny::checkboxInput("plot4_log", "Log y axis", value = FALSE),
                  shiny::checkboxInput("show_all_data", "Show all stations", value = TRUE),
                  shiny::checkboxInput("restrict_y_axis", "Restrict y axis to background station data", value = TRUE)
         )
@@ -409,7 +410,7 @@ server <- function(input, output, session) {
     
     # function fior plot  
     
-    create_proref_plot <- function(data, data_proref){
+    create_proref_plot <- function(data, data_proref, log_y){
       gg1 <- ggplot(data, aes(YEAR, Concentration)) +
         geom_jitter(
           aes(color = Station_bg, size = Background, shape = LOQ), width = 0.2) +
@@ -447,24 +448,42 @@ server <- function(input, output, session) {
       
     }
     
+    
+    
     gg_all <- create_proref_plot(selected_data()$data_backgr_sel, 
-                                 selected_data()$data_proref_sel)
+                                 selected_data()$data_proref_sel,
+                                 input$plot4_log)
     gg_bg <- create_proref_plot(selected_data()$data_backgr_sel %>% filter(Background %in% "Background"),
-                                selected_data()$data_proref_sel)
+                                selected_data()$data_proref_sel,
+                                input$plot4_log)
+    
+    # if 'restrict_y_axis' = TRUE, set max value of y axis to maximum value at background stations
+    # min value of y axis should be 0 for a linear y axis, and just leave at default for log y axis
+    if (input$restrict_y_axis){
+      y_limits_linear <- c(0, selected_data()$max_bg)
+      y_limits_log <- c(NA, selected_data()$max_bg)
+    } else {
+      y_limits_linear <- NULL
+      y_limits_log <- NULL
+    }
     
     if (input$show_all_data){
       # Show all data
-      if (input$restrict_y_axis){
-        gg_all + ylim(0, selected_data()$max_bg)
+      if (input$plot4_log){
+        # log y axis
+        gg_all + scale_y_log10(limits = y_limits_log)
       } else {
-        gg_all
+        # linear y axis
+        gg_all + scale_y_continuous(limits = y_limits_linear)
       }
     } else {
-      # Show background station data
-      if (input$restrict_y_axis){
-        gg_bg + ylim(0, selected_data()$max_bg)
+      # Show data for background station data only
+      if (input$plot4_log){
+        # log y axis
+        gg_bg + scale_y_log10(limits = y_limits_log)
       } else {
-        gg_bg
+        # linear y axis
+        gg_bg + scale_y_continuous(limits = y_limits_linear)
       }
     }
   })
