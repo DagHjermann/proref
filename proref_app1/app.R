@@ -130,7 +130,8 @@ ui <- fluidPage(
                  plotOutput("plot1"),
                  shiny::numericInput("max_rank", "Show first ... stations", value = 50)),
         tabPanel("Time Range Plot", plotOutput("plot2")),
-        tabPanel("Medians Plot", plotOutput("plot3")),
+        tabPanel("Medians Plot", plotOutput("plot3"),
+                 shiny::checkboxInput("plot3_log", "Log y axis", value = TRUE)),
         tabPanel("Raw data Plot", plotOutput("plot4"),
                  shiny::checkboxInput("plot4_log", "Log y axis", value = FALSE),
                  shiny::checkboxInput("show_all_data", "Show all stations", value = TRUE),
@@ -386,7 +387,6 @@ server <- function(input, output, session) {
       scale_shape_manual(values = c("TRUE" = 6, "FALSE" = 16)) +
       geom_hline(data = selected_data()$data_proref_sel, aes(yintercept = PROREF), 
                  linetype = "dashed", colour = "blue") +
-      scale_y_log10() +
       facet_wrap(vars(Analysis)) +
       labs(subtitle = "Annual medians for each time series (coloured = background stations). Blue line = PROREF") +
       theme_bw() +
@@ -394,6 +394,10 @@ server <- function(input, output, session) {
         strip.text = element_text(size = 12), 
         legend.text =  element_text(size = 12)
       )
+    
+    if (input$plot3_log){
+      gg <- gg + scale_y_log10()
+    }
     
     if (nrow(data_medians_sel) == 0) { 
       return(NULL)
