@@ -41,12 +41,26 @@ lookup_background <- result_detailed %>%
 #
 # .-- raw data ----
 # 
+
+# Read raw data (avoid reading same file twice by using 'unique')
+rawdata_list <- lapply(unique(datasets$fn_rawdata), read_data)
+
+# Get index for which data in 'rawdata_list' tha belongs to which row in 'datasets'
+#   (same length as 'datasets')
+get_index <- function(fn)
+  which(unique(datasets$fn_rawdata) == fn) 
+raw_index <- sapply(datasets$fn_rawdata,get_index)
+
+# Make combined data frame for raw data for all three analyses
 data_all_comb <- bind_rows(
-  bind_cols(data.frame(Analysis = datasets$analysis_name[1]), read_data(datasets$fn_rawdata[1]) %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
-  bind_cols(data.frame(Analysis = datasets$analysis_name[2]), read_data(datasets$fn_rawdata[2]) %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
-  bind_cols(data.frame(Analysis = datasets$analysis_name[3]), read_data(datasets$fn_rawdata[3]) %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
+  bind_cols(data.frame(Analysis = datasets$analysis_name[1]), rawdata_list[[raw_index[1]]] %>% filter(YEAR %in% datasets$year1[1]:datasets$year2[1])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[2]), rawdata_list[[raw_index[2]]] %>% filter(YEAR %in% datasets$year1[2]:datasets$year2[2])),
+  bind_cols(data.frame(Analysis = datasets$analysis_name[3]), rawdata_list[[raw_index[3]]] %>% filter(YEAR %in% datasets$year1[3]:datasets$year2[3]))
 ) %>%
   mutate(Analysis = fct_inorder(Analysis))
+# table(data_all_comb$Analysis)
+# Original (1992-2022)     Original (2003-2022) LOQ-filtered (2003-2022) 
+#              2124276                  1580937                  1378626 
 
 #
 # .-- background stations ----
