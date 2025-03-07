@@ -120,6 +120,135 @@ if (FALSE){
 
 
 #
+# .-- new Figure 2 plot (showing algorithm) ----
+#
+
+param <- "AG__WW"
+# param <- "HG__WW"
+species <- "Gadus morhua"
+analysis <- "LOQ-filtered (2003-2022)"
+
+# not used, just for viewing/ checking
+data_plot_results <- result_detailed %>%
+  filter(PARAM %in% param,
+         LATIN_NAME %in% species,
+         Analysis %in% analysis) %>% 
+  select(PARAM, LATIN_NAME, Analysis, Station, Rank, Test, P_round, Background, Median1, Median2)
+
+data_plot1 <- data_backgr_all %>% 
+  filter(PARAM %in% param,
+         LATIN_NAME %in% species,
+         Analysis %in% analysis) %>% 
+  left_join(result_detailed  %>% 
+              select(PARAM, LATIN_NAME, Analysis, Station, Rank, P_round), relationship = "many-to-one"
+  ) %>% 
+  arrange(Rank) %>% 
+  mutate(Station = fct_inorder(Station))
+
+# all stations
+ggplot(data_plot1, aes(Rank, Concentration, color = Station)) +
+  geom_jitter(width = 0.2)
+
+# list of data sets with increasing stations
+
+# index of first non-background station
+max_rank <- which(data_plot_results$Background == "Other") %>% min()
+
+spread <- 0.2
+
+data_plot2 <- 2:max_rank %>% 
+  purrr::map_dfr(
+    \(i) 
+    data_plot1 %>% 
+      filter(Rank %in% 1:i) %>% 
+      mutate(
+        Test = i-1,
+        Test_group = ifelse(Rank < i, "a", "b"),
+        x = ifelse(Rank < i, Test - spread, Test + spread)
+      )
+  )
+xtabs(~Test + Test_group, data_plot2)
+
+data_plot3 <- data_plot2 %>% 
+  group_by(Test, x) %>% 
+  summarise(Concentration = median(Concentration))
+
+# All data, jitter plot
+ggplot(data_plot2, aes(x, Concentration, color = Station)) +
+  geom_jitter(width = 0.2) +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_log10()
+
+# All data, beeswarm plot
+library(ggdist)
+# note: also need to install 'beeswarm' 
+# install.packages("beeswarm")
+ggplot(data_plot2, aes(x, Concentration, fill = Station)) +
+  geom_swarm(color = NA)  +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_log10()
+
+
+# other tries
+# 1
+# ggplot(data_plot2, aes(x, Concentration, color = Station)) +
+#   ggdist::stat_halfeye()
+# 2
+# ggplot(data_plot2, aes(x, Concentration, color = Station)) +
+#   geom_dotplot(binaxis = "y", binwidth = 0.05, stackdir = "center")
+
+# Medians
+data_plot2_medians <- bind_rows(
+  data_plot_results %>% 
+    filter(Rank %in% 2:max_rank) %>% 
+    mutate(x = Rank - 1 - spread, 
+           Concentration = Median1),
+  data_plot_results %>% 
+    filter(Rank %in% 2:max_rank) %>% 
+    mutate(x = Rank - 1 + spread, 
+           Concentration = Median2)
+)
+
+# Medians, test plot 
+ggplot(data_plot2_medians, aes(x, Concentration)) +
+  geom_point() +
+  scale_y_log10()
+
+# All data + medians
+gg <- ggplot(data_plot2, aes(x, Concentration)) +
+  geom_swarm(aes(fill = Station), color = NA)  +
+  # geom_point(data = data_plot2_medians, shape = 18, color = "black", size = rel(6)) +
+  geom_point(data = data_plot2_medians, shape = "-", color = "black", size = rel(20)) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_log10()
+gg
+
+# P-values
+data_plot_testinfo <- data_plot_results %>% 
+  filter(Rank %in% 2:max_rank)
+
+data_plot_proref <- data_proref  %>%
+  filter(PARAM %in% param,
+         LATIN_NAME %in% species,
+         Analysis %in% analysis)
+
+gg2 <- gg +
+  geom_text(data = data_plot_testinfo, 
+            aes(x = Rank-1, 
+                y = 0.0031,                 # NOTE: Hard-coded y!
+                label = paste0(Test, "\nP = ", P_round)),
+            size = 4) +
+  geom_hline(yintercept = data_plot_proref$PROREF, linetype = "dashed", size = 1) +
+  labs(
+    x = "Test number",
+    y = "Concentration (mg/kg w.w.)") +     # NOTE: Hard-coded unit!
+  theme_bw()
+gg2
+
+ggsave("Figures/55_algorithm_example_(fig2).png", gg2, width = 12, height = 8)
+
+
+#
 # VARIOUS DATA/PLOTS ----
 #
 
