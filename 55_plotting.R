@@ -107,11 +107,17 @@ data_proref <- data_backgr_all %>%
   group_by(Analysis, LATIN_NAME, PARAM) %>%
   summarize(PROREF = quantile(Concentration, 0.9) %>% signif(3),
             Median = quantile(Concentration, 0.5) %>% signif(3),
+            n_measurements = n(),
+            Backgr_stations = paste(unique(Station_bg), collapse = ","),
+            n_stations = length(unique(Station_bg)),
             .groups = "drop")
+
+nrow(data_proref)
 
 if (FALSE){
   writexl::write_xlsx(data_proref, "Data/55_proref.xlsx")
 }
+
 
 #
 # VARIOUS DATA/PLOTS ----
