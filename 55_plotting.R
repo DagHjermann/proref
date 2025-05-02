@@ -169,6 +169,19 @@ data_plot2 <- 2:max_rank %>%
   )
 xtabs(~Test + Test_group, data_plot2)
 
+# Add confidence intervals  
+data_confintervals <- data_plot2 %>% 
+  group_by(x) %>% 
+  summarise(
+    ci_lower_log = t.test(log(Concentration), conf.level = 0.95)$conf.int[1],
+    ci_upper_log = t.test(log(Concentration), conf.level = 0.95)$conf.int[2],
+    ci_lower = exp(ci_lower_log),
+    ci_upper = exp(ci_upper_log)
+  )
+data_plot2 <- data_plot2 %>% 
+  left_join(data_confintervals, by = "x", relationship = "many-to-one")
+
+# Data for medians
 data_plot3 <- data_plot2 %>% 
   group_by(Test, x) %>% 
   summarise(Concentration = median(Concentration))
@@ -232,6 +245,9 @@ data_plot_proref <- data_proref  %>%
          LATIN_NAME %in% species,
          Analysis %in% analysis)
 
+#
+# 1. Plot (with medians)
+#
 gg2 <- gg +
   geom_text(data = data_plot_testinfo, 
             aes(x = Rank-1, 
@@ -247,6 +263,36 @@ gg2
 
 ggsave("Figures/55_algorithm_example_(fig2).png", gg2, width = 12, height = 8)
 
+#
+# 2. Plot (with medians and confidence intervals)
+#
+gg_ver2 <- gg2 +
+  geom_errorbar(aes(x, ymin = ci_lower, ymax = ci_upper),
+                width = 0.1, linewidth = 1)
+gg_ver2
+ggsave("Figures/55_algorithm_example_(fig2)-ver2.png", gg_ver2, width = 12, height = 8)
+
+#
+# 3. Plot (with confidence intervals, without medians
+#
+gg_ver3 <- ggplot(data_plot2, aes(x, Concentration)) +
+  geom_swarm(aes(fill = Station), color = NA)  +
+  geom_errorbar(aes(x, ymin = ci_lower, ymax = ci_upper),
+                width = 0.1, linewidth = 1) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_log10() +
+  geom_text(data = data_plot_testinfo, 
+            aes(x = Rank-1, 
+                y = 0.0031,                 # NOTE: Hard-coded y!
+                label = paste0(Test, "\nP = ", P_round)),
+            size = 4) +
+  geom_hline(yintercept = data_plot_proref$PROREF, linetype = "dashed", size = 1) +
+  labs(
+    x = "Test number",
+    y = "Concentration (mg/kg w.w.)") +     # NOTE: Hard-coded unit!
+  theme_bw()
+gg_ver3
+ggsave("Figures/55_algorithm_example_(fig2)-ver3.png", gg_ver3, width = 12, height = 8)
 
 #
 # VARIOUS DATA/PLOTS ----
