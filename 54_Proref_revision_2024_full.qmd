@@ -8,7 +8,7 @@ This script runs the PROREF procedure for all stations, parameters and basises
 - The final results are for Background1 (all stations not being different at P < 0.10, and the ratio of concentration medians between the cleanest and dirties background station is not allowed to be above 2  
 - The whole script is a bit slow - it takes about 1 hour 15 minutes (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
 
-## Packages, loading functions
+## 1. Packages, loading functions
 
 ```{r}
 library(data.table)
@@ -42,9 +42,9 @@ hyphens <- "--------------------------------------------------------------------
 
 ```
 
-## Data through 2022  
+## 2. Data through 2022  
 
-### Raw data for analysis  
+### 2.1 Raw data for analysis  
 
 - We will also take basis into account  
 - To simplify matters, we just modify PARAM so it also contains basis 
@@ -61,7 +61,7 @@ df_series_sel <- readRDS("Data/54_dataseries_2024_loqfilter3x.rds")
 ```
 
 
-### LOQ levels and <LOQ frequency  
+### 2.2 LOQ levels and <LOQ frequency  
 
 ```{r}
 
@@ -117,9 +117,18 @@ ggplot(
 
 ```
 
+## 3. Selection of background stations  
 
+* For each contaminant / species  
+    - Arrange stations from clean to more contaminated  
+    - Stepwise testing (station 2 against station 1; station 3 against station 1+2; etc.)  
+    - Stations are added to the list of background station until stopping  
+* Creates three variables for three different stopping rules  
+    - Background1 = TRUE for all stations not being different at P < 0.10   
+    - Background1b = As Background1, but also the ratio beteween stations medians is not allowed to be above 2   
+    - Background2 = TRUE for all stations not being different at P < 0.05 
 
-### Run analysis, test  
+### 3.1 Select background stations: test  
 
 ```{r}
 
@@ -142,9 +151,11 @@ test <- get_background_values(
 
 ```
 
-### Run analysis for data through 2022  
+### 3.2 Select background stations: Run analysis for all data
 
+* through 2022  
 * Ca. 23 minutes with 4 paralell cores  
+* NOTE: you can skip this by loading saved data - use code at the bottom of 3.4 (enclosed in "FALSE" brackets)  
 
 ```{r, results='hide'}
 
@@ -206,7 +217,7 @@ str(result)
 
 ```
 
-### Get detailed results  
+### 3.3 Select background stations: detailed results  
 
 This results in a data frame with one row for every step in the analysis (each station added) and three boolean (TRUE/FALSE) variables:    
 - Background1 = TRUE for all stations not being different at P < 0.10  
@@ -280,7 +291,7 @@ result_detailed <- result_detailed %>%
 
 ```
 
-#### Save and make table check 
+### 3.4 Save and make table check 
 
 ```{r}
 
@@ -291,6 +302,13 @@ fn <- paste0("Data/54_result_detailed_", txt_years, "_", txt_timestamp, ".rds")
 saveRDS(result_detailed, fn) 
         
 xtabs(~Background, result_detailed)
+
+if (FALSE){
+  # load saved data (if you want to skip 3.2)
+  dir("Data", "54_result_detailed_") %>% sort()
+  result_detailed <- readRDS("Data/54_result_detailed_2003-2022_2025-01-20-T1603.rds")
+  nrow(result_detailed)
+}
 
 ```
 
@@ -350,9 +368,14 @@ ggplot(df_medians %>% filter(Background1b == "Background"),
   geom_point()
 
 ```
+## 4. Extract PROREF based on data from background stations   
 
+* Proref is defined as the 95% percentile of concentrations in the background stations    
+* This is implemented in the function get_conc_percentiles  
 
-### Summarize results  
+### 4.1. Reshape station data (defining background station)  
+
+* reshaping 'result_detailed' to longer form  
 
 ```{r}
 
@@ -385,7 +408,8 @@ result_summ <- map_dfr(
 
 ```
 
-#### Add potential number of stations  
+
+### 4.2. Add potential number of stations  
 
 ```{r}
 
@@ -401,9 +425,13 @@ result_summ <- result_summ %>%
 
 ```
 
-#### Add the actual PROREF values  
+### 4.3 Add the actual PROREF values  
 
-- using Background1b above  
+- Note: does not use 'get_conc_percentiles' function amymore - just using dplyr instead   
+
+- Background1 = TRUE for all stations not being different at P < 0.10  
+- Background1b = As Background1, but also the ratio beteween stations medians is not allowed to be above 2  
+- Background2 = TRUE for all stations not being different at P < 0.05      
 
 ```{r}
 
