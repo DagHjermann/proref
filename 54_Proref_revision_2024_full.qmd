@@ -443,17 +443,17 @@ result_summ <- result_summ %>%
 lookup_background <- bind_rows(
   result_detailed %>%
     mutate(
-      Proref_type = "90 perc, max median ratio",
+      Proref_type = "p < 0.10, max median ratio",
       Background = Background1b) %>%
     select(Proref_type, LATIN_NAME, PARAM, Station, Background),
   result_detailed %>%
     mutate(
-      Proref_type = "90 perc only",
+      Proref_type = "p < 0.10",
       Background = Background1) %>%
     select(Proref_type, LATIN_NAME, PARAM, Station, Background),
   result_detailed %>%
     mutate(
-      Proref_type = "95 perc only",
+      Proref_type = "p < 0.05",
       Background = Background2) %>%
     select(Proref_type, LATIN_NAME, PARAM, Station, Background)
 )
@@ -497,29 +497,6 @@ result_proref <- data_all_backgr %>%
 
 ```
 
-- takes 36 minutes with 4 cores running in parallel  
-
-```{r}
-
-t0 <- Sys.time()
-
-# debugonce(get_conc_percentiles)
-
-result_summ$PROREF <- future_map_dbl(
-  seq_len(nrow(result_summ)),
-  \(i) get_conc_percentiles(
-    determinant = result_summ$PARAM[i], 
-    species = result_summ$LATIN_NAME[i], 
-    stationstring = result_summ$Stations[i], 
-    data = subset(data_all2, YEAR %in% years_backgr2), 
-    var_name = "Concentration")
-)
-
-t1 <- Sys.time()
-t1-t0
-
-```
-
 
 #### Recreate the original PARAM and BASIS  
 
@@ -539,7 +516,7 @@ result_proref <- result_proref %>%
 ```
 
 
-### Save  
+## 5. Save  
 
 ```{r}
 
@@ -552,11 +529,48 @@ result_proref %>%
 
 fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", txt_timestamp, ".csv")
 result_proref %>%
-  filter(Proref_type %in% "90 perc, max median ratio") %>%
+  filter(Proref_type %in% "p < 0.10, max median ratio") %>%
   readr::write_csv(fn2)
 
 ```
 
+
+## Appendix: Check and compare saved results  
+
+```{r}
+
+if (FALSE){
+  
+  # results calculated from code 
+  result_proref_calc <- result_proref %>% filter(Proref_type %in% "p < 0.10, max median ratio")
+  
+  # results from saved file
+  # Note: for results mad 2025-01-20 or earlier, the table contains very misleading values of 
+  #   Prefer_type: "90 perc, max median ratio", "90 perc only", "95 perc"
+  # This was change ini the code above 23.05.2025
+  dir("Data", pattern = "54_result_summ_final_")
+  result_proref_file <- readr::read_csv("Data/54_result_summ_final_2003-2022_2025-01-20-T1630.csv")
+  
+  names(result_proref_calc)
+  names(result_proref_file)
+
+  # compare
+  library(compareDF)
+  
+  # for the entire table: only "Proref_type" differs
+  ctable = compare_df(result_proref_calc, result_proref_file, c("PARAM", "Basis", "LATIN_NAME"))
+  create_output_table(ctable)
+    
+  # for the entire table, and ignoring "Proref_type" 
+  ctable = compare_df(result_proref_calc, result_proref_file, c("PARAM", "Basis", "LATIN_NAME"), 
+                      exclude = "Proref_type", 
+                      stop_on_error = FALSE)
+  ctable$change_summary
+  # the two data frames are the same  
+
+}
+
+```
 
 
 
