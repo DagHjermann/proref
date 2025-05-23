@@ -475,6 +475,7 @@ if (FALSE){
 #
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o##
 
+# note: this function is no longer used (using dplyr instead, much more effective)
 
 get_conc_percentiles <- function(determinant,
                                  species,
