@@ -14,6 +14,28 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
+source("54data_Proref_2024_functions.R")
+
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
+#
+# Read file of parameters selected for analysis -----
+#
+#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
+
+lookup_param <- readr::read_csv("Input_data/010E PARAMs list.txt")
+cat("lookup_param:", nrow(lookup_param), "rows\n")
+
+# What are the difference between PARAM_orig and PARAM_2?
+# lookup_param %>% 
+#   filter(PARAM_orig != PARAM_2) %>% 
+#   select(PARAM_orig, PARAM_2, Component.Name)
+# 
+#     PARAM_orig      PARAM_2       Component.Name
+#     <chr>           <chr>         <chr>         
+#   1 BDE6S_exloq__WW LBsumBDE6__WW LB sum of BDE6
+#   2 CB_S7_exloq__WW LBsumCB7__WW  LB sum CB7   
+
+
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
 #
 # Read data -----
@@ -51,6 +73,11 @@ data_temporary <- data_all2 %>%
 
 data_all2 <- data_temporary
 
+cat("data_all2:", nrow(data_all2), "rows\n")
+# data_all2: 2350172 rows
+
+get_coverage(data_all2)
+# true = 149
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
 #
@@ -64,6 +91,12 @@ xtabs(~STATION_CODE, data_all2 %>% filter(substr(STATION_CODE, 1, 1) == "B"))
 
 data_all2 <- data_all2 %>%
   filter(!substr(STATION_CODE, 1, 1) == "B")
+
+cat("data_all2:", nrow(data_all2), "rows\n")
+# data_all2: 2335100 rows
+
+get_coverage(data_all2)
+# true = 149
 
 # Stations used for very few years
 check <- data_all2 %>%
@@ -86,6 +119,9 @@ check <- data_all2 %>%
   arrange(n)
 # check
 table(check$n)
+
+get_coverage(data_all2)
+# true = 149
 
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
@@ -124,6 +160,8 @@ data_all2 <- data_all2 %>%
     )
   )
 
+get_coverage(data_all2)
+# true = 149
 
 #o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o#o 
 #
@@ -297,10 +335,31 @@ data_all2_filtered <- data_all2 %>%
 
 cat("Rows before filtering high less-thans: ", 
     nrow(data_all2)/1E6, "millions\n")
-cat("Rows removed by filtering filtering high less-thans: ", 
+cat("Rows removed by filtering high less-thans: ", 
     nrow(data_all2)/1E6 - nrow(data_all2_filtered)/1E6, "millions\n")
 
-# Show values of one paramerter / species before and after filtering 
+# debugonce(get_coverage_data)
+# debugonce(get_coverage)
+get_coverage(data_all2_filtered) 
+# covered
+# 0   1 
+# 10 139 
+
+# Dataset of selected parameters lost in filtering
+lost <- get_coverage_missing(data_all2_filtered) %>% 
+  select(PARAM) %>% 
+  mutate(`filtered_high_lessthans` = 1)
+
+params_fate <- get_coverage_data(data_all2) %>% 
+  select(PARAM, PARAM_orig, Component.Name, Substance.Group, cod, mussel) %>% 
+  rename(
+    stations_cod = cod,
+    stations_mussel = mussel) %>% 
+  left_join(lost)
+
+
+
+# Show values of one parameter / species before and after filtering 
 param <- "CB52__WW"
 spp <- "Gadus morhua"
 gg <- bind_rows(
@@ -374,4 +433,5 @@ if (do_check){
 
 saveRDS(data_all2, "Data/54_data_2024_loqfilter3x.rds")  
 saveRDS(df_series_sel, "Data/54_dataseries_2024_loqfilter3x.rds")  
+readr::write_csv(params_fate, "Data/54_dataseries_2024_parameter_fate.csv")  
 
