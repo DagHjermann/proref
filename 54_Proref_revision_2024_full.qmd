@@ -411,45 +411,52 @@ ggplot(df_medians %>% filter(Background1b == "Background"),
 #### Analysis of "lost" parameters  
 ```{r}
 
-  df_series_sel_summ <- df_series_sel %>% 
-    filter(grepl("__WW$", PARAM) & 
-             Species %in% c("Gadus morhua", "Mytilus edulis")) %>% 
-    count(PARAM, Species) %>% 
-    pivot_wider(names_from = Species, values_from = n, values_fill = 0) %>% 
-    rename(ts_cod = `Gadus morhua`, ts_mussel = `Mytilus edulis`)
+df_series_sel_summ <- df_series_sel %>% 
+  filter(grepl("__WW$", PARAM) & 
+           Species %in% c("Gadus morhua", "Mytilus edulis")) %>% 
+  count(PARAM, Species) %>% 
+  pivot_wider(names_from = Species, values_from = n, values_fill = 0) %>% 
+  rename(ts_cod = `Gadus morhua`, ts_mussel = `Mytilus edulis`)
 
-  params_fate2 <- params_fate1 %>% 
-    left_join(df_series_sel_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
-    mutate(ts = ifelse(ts_cod > 0 | ts_cod > 0, 1, 0))
+# 10 parameters were not in df_series_sel (ts = NA)
+# 23 more parameters lost as number of stations were zero (ts = 0)
+# 116 parameters kept (ts = 1)
+params_fate2 <- params_fate1 %>% 
+  left_join(df_series_sel_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
+  mutate(ts = ifelse(ts_cod > 0 | ts_mussel > 0, 1, 0))
+#  [1] "BA"      "MO"      "NAP"     "BAA"     "BKF"     "BAP"     "DBA3A"   "PER"     "BDE156" 
+# [10] "BDE191"  "MBT"     "DBT"     "TTBT"    "TPhT"    "MOT"     "DOT"     "TCHT"    "MBT-Sn" 
+# [19] "DBT-Sn"  "TTBT-Sn" "TPhT-Sn" "MOT-Sn"  "TEHP"  
 
-  result_detailed_summ <- result_detailed %>% 
-    filter(grepl("__WW$", PARAM) & 
-             LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>% 
-    filter(Last_rank) %>% 
-    count(PARAM, LATIN_NAME) %>% 
-    pivot_wider(names_from = LATIN_NAME, values_from = n, values_fill = 0) %>% 
-    rename(result1_cod = `Gadus morhua`, result1_mussel = `Mytilus edulis`)
-  nrow(result_detailed_summ)
-  
-  # table(addNA(result_detailed_summ$result1_cod))
-  # table(addNA(result_detailed_summ$result1_mussel))
-  
-  params_fate3 <- params_fate2 %>% 
-    left_join(result_detailed_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
-    mutate(result1 = ifelse(result1_cod > 0 | result1_mussel > 0, 1, 0))
+result_detailed_summ <- result_detailed %>% 
+  filter(grepl("__WW$", PARAM) & 
+           LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>% 
+  filter(Last_rank) %>% 
+  count(PARAM, LATIN_NAME) %>% 
+  pivot_wider(names_from = LATIN_NAME, values_from = n, values_fill = 0) %>% 
+  rename(result1_cod = `Gadus morhua`, result1_mussel = `Mytilus edulis`)
+nrow(result_detailed_summ)
 
-  # 23 more parameters lost  
-  table(addNA(params_fate3$ts), addNA(params_fate3$filtered_high_lessthans))
-  
+# table(addNA(result_detailed_summ$result1_cod))
+# table(addNA(result_detailed_summ$result1_mussel))
+
+params_fate3 <- params_fate2 %>% 
+  left_join(result_detailed_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
+  mutate(result1 = ifelse(result1_cod > 0 | result1_mussel > 0, 1, 0))
+table(addNA(params_fate3$result1_mussel))
+table(addNA(params_fate3$result1))
+table(addNA(params_fate3$result1_mussel), addNA(params_fate3$result1))
+
+# 23 more parameters lost  
+table(addNA(params_fate3$ts), addNA(params_fate3$filtered_high_lessthans))
+
   # 30 more parameters lost  
   table(addNA(params_fate3$result1), addNA(params_fate3$filtered_high_lessthans))
   #          1 <NA>
   #   1      0  109
   #   <NA>  10   30
   
-  params_fate2 %>% 
-    filter(is.na(result1) & is.na(filtered_high_lessthans))
-  
+
            
   
 ```
