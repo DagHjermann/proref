@@ -175,8 +175,11 @@ data_all3 <- data_all2[
     "PARAM", "FLAG1", "Concentration", "UNIT")
 ]
 
+# debugonce(get_background_values)
+# debugonce(get_lower_medians)
 test <- get_background_values(
-       determinant = "HG__WWa", 
+       # determinant = "HG__WWa", 
+       determinant = "BDE138__WW", 
        species = "Gadus morhua", 
        var_name = "Concentration", 
        years_backgr = years_backgr2,
@@ -408,7 +411,7 @@ ggplot(df_medians %>% filter(Background1b == "Background"),
 ```
 
 
-#### Analysis of "lost" parameters  
+#### "Lost" parameters 1    
 ```{r}
 
 df_series_sel_summ <- df_series_sel %>% 
@@ -418,15 +421,13 @@ df_series_sel_summ <- df_series_sel %>%
   pivot_wider(names_from = Species, values_from = n, values_fill = 0) %>% 
   rename(ts_cod = `Gadus morhua`, ts_mussel = `Mytilus edulis`)
 
-# 10 parameters were not in df_series_sel (ts = NA)
-# 23 more parameters lost as number of stations were zero (ts = 0)
-# 116 parameters kept (ts = 1)
+# 10 parameters were not in df_series_sel (ts == NA)
+# no more parameters lost as number of stations were zero (ts == 0)
+# 139 parameters still kept (ts == 1)
 params_fate2 <- params_fate1 %>% 
   left_join(df_series_sel_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
   mutate(ts = ifelse(ts_cod > 0 | ts_mussel > 0, 1, 0))
-#  [1] "BA"      "MO"      "NAP"     "BAA"     "BKF"     "BAP"     "DBA3A"   "PER"     "BDE156" 
-# [10] "BDE191"  "MBT"     "DBT"     "TTBT"    "TPhT"    "MOT"     "DOT"     "TCHT"    "MBT-Sn" 
-# [19] "DBT-Sn"  "TTBT-Sn" "TPhT-Sn" "MOT-Sn"  "TEHP"  
+table(addNA(params_fate2$ts))
 
 result_detailed_summ <- result_detailed %>% 
   filter(grepl("__WW$", PARAM) & 
@@ -437,30 +438,58 @@ result_detailed_summ <- result_detailed %>%
   rename(result1_cod = `Gadus morhua`, result1_mussel = `Mytilus edulis`)
 nrow(result_detailed_summ)
 
-# table(addNA(result_detailed_summ$result1_cod))
-# table(addNA(result_detailed_summ$result1_mussel))
 
+# 30 more parameters lost
+# ts was 1, result1 == NA
 params_fate3 <- params_fate2 %>% 
   left_join(result_detailed_summ, by = join_by(PARAM_orig == PARAM), relationship = "one-to-one") %>%
   mutate(result1 = ifelse(result1_cod > 0 | result1_mussel > 0, 1, 0))
-table(addNA(params_fate3$result1_mussel))
-table(addNA(params_fate3$result1))
-table(addNA(params_fate3$result1_mussel), addNA(params_fate3$result1))
+table(addNA(params_fate3$ts), addNA(params_fate3$result1))
+  #        1 <NA>
+  # 1    109   30
+  # <NA>   0   10
+params_lost3 <- params_fate3 %>% 
+  filter(ts == 1 & is.na(result1)) %>% 
+  pull(PARAM)
+params_lost3
+#  [1] "BDE138"             "BDE156"             "BDE191"             "BDE197"            
+#  [5] "BDE205"             "BDE206"             "BDE207"             "PFHxS"             
+#  [9] "Endrin"             "HCHB"               "Toksafen Parlar 62" "TTBT"              
+# [13] "MOT"                "DOT"                "TCHT"               "MBT-Sn"            
+# [17] "DBT-Sn"             "TBTIN"              "TTBT-Sn"            "TPhT-Sn"           
+# [21] "MOT-Sn"             "TDCP"               "EHDPP"              "TEHP"              
+# [25] "TCPP"               "4-N-OP"             "4-T-OP"             "4-N-NP"            
+# [29] "4-T-NP"             "BPA" 
 
-# 23 more parameters lost  
-table(addNA(params_fate3$ts), addNA(params_fate3$filtered_high_lessthans))
-
-  # 30 more parameters lost  
-  table(addNA(params_fate3$result1), addNA(params_fate3$filtered_high_lessthans))
-  #          1 <NA>
-  #   1      0  109
-  #   <NA>  10   30
-  
-
-           
-  
 ```
 
+#### "Lost" parameters 2   
+- These 30 parameters are lost because no stations have >= 5 years of data  
+```{r}
+
+subset(data_all3, YEAR %in% years_backgr2) %>% 
+  filter(PARAM %in% "BDE138__WW") 
+
+subset(data_all3, YEAR %in% years_backgr2) %>%
+  ungroup() %>% 
+  filter(
+    PARAM %in% c(paste0(params_lost3, "__WW")),
+    # PARAM %in% "BDE138__WW",
+    LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>%
+  count(PARAM, LATIN_NAME, YEAR, STATION_CODE, name = "n_samples") %>% 
+  mutate(
+    min_n = 
+      case_when(
+        LATIN_NAME %in% "Gadus morhua" ~ 10,
+        LATIN_NAME %in% "Mytilus edulis" ~ 2),
+    year_accepted = n_samples > min_n) %>% 
+  count(PARAM, LATIN_NAME, STATION_CODE, name = "n_years") %>%
+  mutate(n_years_group = cut(n_years, breaks = c(0,2,3,4,5,15))) %>% 
+  count(PARAM, LATIN_NAME, n_years_group) %>%
+  pivot_wider(names_from = n_years_group, values_from = n, values_fill = 0)
+
+
+```
 
 ## 4. Extract PROREF based on data from background stations   
 
@@ -521,10 +550,11 @@ result_summ <- result_summ %>%
 
 ### 4.3 Add the actual PROREF values  
 
-- Note: does not use 'get_conc_percentiles' function amymore - just using dplyr instead   
+- Note: does not use 'get_conc_percentiles' function amymore - just using dplyr instead  
+    - MUCH faster, takes only a second or two
 
 - Background1 = TRUE for all stations not being different at P < 0.10  
-- Background1b = As Background1, but also the ratio beteween stations medians is not allowed to be above 2  
+- Background1b = As Background1, but also the ratio beteween stations medians is not allowed to be above 2 (the one used in the paper)     
 - Background2 = TRUE for all stations not being different at P < 0.05      
 
 ```{r}
@@ -608,6 +638,89 @@ result_proref <- result_proref %>%
 # View(result_proref)
 
 ```
+
+#### Analysis of "lost" parameters  
+```{r}
+
+result_proref_wide <- result_proref %>% 
+  # pivot_wider(names_from = Proref_type, values_from = PROREF)
+  filter(
+    Basis == "WW",
+    Proref_type %in% "p < 0.10, max median ratio",
+    LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>% 
+  select(PARAM, LATIN_NAME, PROREF) %>% 
+  pivot_wider(names_from = LATIN_NAME, values_from = PROREF)
+
+params_fate4 <- params_fate3 %>% 
+  left_join(result_proref_wide, by = join_by(PARAM)) %>% 
+  rename(
+    proref_cod = `Gadus morhua`,
+    proref_mussel = `Mytilus edulis`) %>% 
+  mutate(
+    proref = !(is.na(proref_cod) & is.na(proref_mussel))
+  )
+
+# 3 more parameters lost  
+table(addNA(params_fate4$proref))
+# FALSE  TRUE  <NA> 
+#    43   106     0 
+
+# Oarameters lost - 3 sums
+params_fate4 %>% 
+  filter(result1 == 1 & !proref) %>% 
+  pull(PARAM)
+# "LBsumPAH16" "LBsumBDE6"  "LBsumCB7"  
+
+# Compare with parameters in paper
+params_fate5 <- params_fate4 %>% 
+  left_join(
+    lookup_param %>% 
+      rename(
+        proref_cod_paper = `PROREF_Gadus morhua`,
+        proref_mussel_paper = `PROREF_Mytilus edulis`) %>% 
+      select(PARAM, proref_cod_paper, proref_mussel_paper)
+  ) %>% 
+  mutate(
+    proref_paper = ifelse(is.na(proref_cod_paper) & is.na(proref_mussel_paper),0,1)
+  )
+
+# have lost 24 more
+# now we have 82 
+table(addNA(params_fate5$proref), addNA(params_fate5$proref_paper))
+
+pars_lost <- params_fate5 %>% 
+  filter(proref & is.na(proref_cod_paper) & is.na(proref_mussel_paper)) %>% 
+  pull(PARAM)
+pars_lost
+#  [1] "BA"                    "MO"                    "V"                    
+#  [4] "BDE85"                 "BDE184"                "BDE209"               
+#  [7] "PFHxA"                 "PFHpA"                 "PFOA"                 
+# [10] "PFNA"                  "PFBS"                  "Dieldrin"             
+# [13] "alfa-Klordan (cis)"    "gamma-Klordan (trans)" "Oxyklordan"           
+# [16] "Heptaklor epoksid"     "Nonaklor, trans-"      "Mirex"                
+# [19] "Toksafen Parlar 26"    "Toksafen Parlar 50"    "DDTOP"                
+# [22] "DDDOP"                 "DDEOP"                 "TBBPA"  
+
+# these are lost because all the stations end up as bcaground stations
+# (i.e., no station was significantly different from all stations )
+result_detailed %>%
+  filter(
+    PARAM %in% c(paste0(pars_lost, "__WW"))) %>% 
+  xtabs(~Background1b, .)
+
+  
+
+result_detailed %>%
+  filter(
+    PARAM %in% c(paste0(pars_lost, "__WW"))
+    ) %>% 
+  count(PARAM, Background1b) %>% 
+  pivot_wider(names_from = Background1b, values_from = n)
+  
+
+
+```
+
 
 
 ## 5. Save  
