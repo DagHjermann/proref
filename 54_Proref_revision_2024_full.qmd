@@ -6,7 +6,9 @@ format: html
 This script runs the PROREF procedure for all stations, parameters and basises  
 - Three "stopping" rules are used (Background1, Background1b and Background2)  
 - The final results are for Background1 (all stations not being different at P < 0.10, and the ratio of concentration medians between the cleanest and dirties background station is not allowed to be above 2  
-- The whole script is a bit slow - it takes about 1 hour 15 minutes (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
+- The whole script is a bit slow - it takes about 1 hour 15 minutes 
+    - 3.2 Select background stations: Run analysis for all data: 22 min.
+    - (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
 
 ## 1. Packages, loading functions
 
@@ -81,11 +83,14 @@ params_fate1 <- params_fate %>%
       filter(grepl("__WW$", PARAM) & 
                Species %in% c("Gadus morhua", "Mytilus edulis")) %>% 
       distinct(PARAM) %>% 
-      mutate(ts_orig = 1)
+      mutate(ts_orig = 1),
+    by = join_by(PARAM_orig==PARAM)
   )
 
-# all are present
+# Confirms that 139 are present
 table(addNA(params_fate1$ts_orig))
+ #   1 <NA> 
+ # 139   10 
 
 ```
 
