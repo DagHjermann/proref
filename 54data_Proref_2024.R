@@ -357,7 +357,10 @@ params_fate <- get_coverage_data(data_all2) %>%
     stations_mussel = mussel) %>% 
   left_join(lost)
 
-
+# 10 parameters lost by filtering high less-thans   
+table(addNA(params_fate$filtered_high_lessthans))
+#    1 <NA> 
+#   10  139 
 
 # Show values of one parameter / species before and after filtering 
 param <- "CB52__WW"
@@ -434,4 +437,8 @@ if (do_check){
 saveRDS(data_all2, "Data/54_data_2024_loqfilter3x.rds")  
 saveRDS(df_series_sel, "Data/54_dataseries_2024_loqfilter3x.rds")  
 readr::write_csv(params_fate, "Data/54_dataseries_2024_parameter_fate.csv")  
+
+if (FALSE){
+  params_fate <- readr::read_csv("Data/54_dataseries_2024_parameter_fate.csv")
+}
 
