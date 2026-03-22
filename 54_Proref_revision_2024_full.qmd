@@ -10,7 +10,9 @@ This script runs the PROREF procedure for all stations, parameters and basises
     - 3.2 Select background stations: Run analysis for all data: 22 min.
     - (one hour for "Run analysis for data through 2022", one hour for "add the actual proref")  
 
-## 1. Packages, loading functions
+## 1. Startup
+
+### Packages, loading functions  
 
 ```{r}
 library(data.table)
@@ -44,6 +46,26 @@ years_backgr2 <- 2003:2022
 hyphens <- "-------------------------------------------------------------------------------\n"
 
 ```
+
+### Settings  
+
+```{r}
+
+# reruns analysis of 3.2   
+# options 
+rerun_analysis_values <- c("all", "no", "test")
+# "all":   reruns entire analysis (25 minutes with 4 cores)
+# "no":    uses saved results    
+# "test":  reruns analysis for a mini test (two series only)  
+
+rerun_analysis <- "test"
+
+if (!(rerun_analysis %in% rerun_analysis_values)){
+  stop("'rerun_analysis' must be one of these: ", paste(rerun_analysis_values, collapse = ","))
+}
+
+```
+
 
 ## 2. Data through 2022  
 
@@ -197,6 +219,12 @@ test <- get_background_values(
 * NOTE: you can skip this by loading saved data - use code at the bottom of 3.4 (enclosed in "FALSE" brackets)  
 
 ```{r, results='hide'}
+
+if (rerun_analysis == "test"){
+  df_series_sel_original <- df_series_sel
+  df_series_sel <- df_series_sel_original %>% 
+    filter(PARAM %in% c("HG__WWa", "BDE138__WW") & Species %in% "Gadus morhua")
+}
 
 cat(hyphens, "Number of selected compounds x basis (per species)\n", hyphens)  
 df_series_sel$Species %>% table()
