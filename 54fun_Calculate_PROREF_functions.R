@@ -436,6 +436,10 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Median_startyear = median(df_diff$Min_year[1:i2]),
                          Median_endyear = median(df_diff$Max_year[1:i2]),
                          stringsAsFactors = FALSE)
+    df_diff <- df_diff %>%
+      mutate(
+        PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, 
+        Variable = var_name, UNIT = unit, .before = everything())
   } else {
     result <- data.frame(PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, Variable = var_name, UNIT = unit,
                          Years_start = head(years_backgr, 1),
@@ -447,11 +451,9 @@ get_background_values <- function(determinant, species, var_name, years_backgr =
                          Median_lowest = NA, Median_ratio = NA, Q90 = NA, Q95 = NA, Max = NA, 
                          Median_n_years = NA, Median_startyear = NA, Median_endyear = NA,
                          stringsAsFactors = FALSE)
+    df_diff <- NULL
   }  
-  df_diff <- df_diff %>%
-    mutate(
-      PARAM = determinant, LATIN_NAME = species, TISSUE_NAME = tissue, 
-      Variable = var_name, UNIT = unit, .before = everything())
+
   list(
     result_one_line = result,
     differences = df_diff
