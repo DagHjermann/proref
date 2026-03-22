@@ -58,7 +58,7 @@ rerun_analysis_values <- c("all", "no", "test")
 # "no":    uses saved results, given by 'saved_detailed_results'   
 # "test":  reruns analysis for a mini test (two series only)  
 
-rerun_analysis <- "test"
+rerun_analysis <- "no"
 save_results <- FALSE
 saved_detailed_results <- "Data/54_result_detailed_2003-2022_2025-01-20-T1603.rds"
 
@@ -696,7 +696,9 @@ result_proref <- result_proref %>%
 
 ```
 
-### 4.4 Analysis of "lost" parameters  
+### 4.4 Analysis of "lost" parameters   
+
+#### params_fate4 and params_fate5  
 ```{r}
 
 result_proref_wide <- result_proref %>% 
@@ -723,7 +725,7 @@ table(addNA(params_fate4$proref))
 # FALSE  TRUE  <NA> 
 #    43   106     0 
 
-# Oarameters lost - 3 sums
+# Parameters lost - these are 3 sum parameters 
 params_fate4 %>% 
   filter(result1 == 1 & !proref) %>% 
   pull(PARAM)
@@ -759,14 +761,12 @@ pars_lost
 # [19] "Toksafen Parlar 26"    "Toksafen Parlar 50"    "DDTOP"                
 # [22] "DDDOP"                 "DDEOP"                 "TBBPA"  
 
-# these are lost because all the stations end up as bcaground stations
-# (i.e., no station was significantly different from all stations )
+# these are lost because all stations end up as background stations
+# (i.e., no station was significantly different from all stations with lower concentrations)
 result_detailed %>%
   filter(
     PARAM %in% c(paste0(pars_lost, "__WW"))) %>% 
   xtabs(~Background1b, .)
-
-  
 
 result_detailed %>%
   filter(
@@ -775,7 +775,39 @@ result_detailed %>%
   count(PARAM, Background1b) %>% 
   pivot_wider(names_from = Background1b, values_from = n)
   
+```
 
+#### final 'params_fate' table  
+```{r}
+
+table(addNA(params_fate5$filtered_high_lessthans))
+table(addNA(params_fate5$result1))
+table(addNA(params_fate5$proref_paper))
+params_fate_final <- params_fate5 %>% 
+  mutate(
+    filtered_high_lessthans = case_when(
+      filtered_high_lessthans == 1 ~ 0,
+      TRUE ~ 1),
+    filtered_too_few_years = case_when(
+      is.na(result1) & filtered_high_lessthans == 1 ~ 0,
+      filtered_high_lessthans == 1 ~ 1,
+      filtered_high_lessthans == 0 ~ NA),
+    filtered_only_background_stations = case_when(
+      filtered_high_lessthans %in% 1 &
+        filtered_too_few_years %in% 1 &
+          proref_paper %in% 1 ~ 1,
+      filtered_high_lessthans %in% 1 &
+        filtered_too_few_years %in% 1 &
+          proref_paper %in% 0 ~ 0)
+  ) %>% 
+  select(PARAM:Substance.Group, 
+         filtered_high_lessthans,
+         filtered_too_few_years,
+         filtered_only_background_stations)
+
+table(addNA(params_fate_final$filtered_high_lessthans))
+table(addNA(params_fate_final$filtered_too_few_years))
+table(addNA(params_fate_final$filtered_only_background_stations))
 
 ```
 
@@ -802,6 +834,10 @@ if (save_results){
     filter(Proref_type %in% "p < 0.10, max median ratio") %>%
     readr::write_csv(fn2)
   cat("'result_proref' with selected Proref_type saved as ", fn2, "\n")
+
+  fn3 <- "Data/54_params_fate.csv"
+  readr::write_csv(params_fate_final, fn3)
+  cat("'params_fate_final' saved as ", fn3, "\n")
   
 }
 
