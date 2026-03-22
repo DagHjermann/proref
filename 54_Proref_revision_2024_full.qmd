@@ -116,6 +116,10 @@ table(addNA(params_fate1$ts_orig))
  #   1 <NA> 
  # 139   10 
 
+if (rerun_analysis == "test"){
+  df_series_sel_original <- df_series_sel
+}
+
 ```
 
 
@@ -223,9 +227,12 @@ test <- get_background_values(
 ```{r, results='hide'}
 
 if (rerun_analysis == "test"){
-  df_series_sel_original <- df_series_sel
+  
+  # test data: four series
+  # including BDE138__WW which doesn't have enough data  
   df_series_sel <- df_series_sel_original %>% 
-    filter(PARAM %in% c("HG__WWa", "BDE138__WW") & Species %in% "Gadus morhua")
+    filter(PARAM %in% c("HG__WW", "BDE138__WW"),
+           Species %in% c("Gadus morhua", "Mytilus edulis"))
 }
 
 cat(hyphens, "Number of selected compounds x basis (per species)\n", hyphens)  
@@ -373,7 +380,7 @@ if (rerun_analysis %in% c("test", "all")){
     ) #%>%
   #select(-P_prev, -P_change1, -P_cum1, -P_change2, -P_cum2, -Last_rank)
   
-  cat(hyphens, "Detailed result table\n", hyphens)
+  cat(hyphens, "Detailed result table\n", hyphens, sep = "")
   str(result_detailed)
 
 }
@@ -395,12 +402,14 @@ if (rerun_analysis == "all"){
 
 ```
 
-#### Plot detailed data - example    
+### 3.5 Plot detailed data - example    
 
 ```{r}
 
 param <- "CU__WW"
 species <- "Mytilus edulis"
+param <- "HG__WWa"
+species <- "Gadus morhua"
 
 result_sel <- result_detailed %>%
   filter(PARAM == param & LATIN_NAME == species)
@@ -412,12 +421,13 @@ result_sel %>%
   paste(collapse = ", ")
 
 # Get medians (as a list)
-annualmedians_result <- get_lower_medians(par = param, 
-                                          sp = species, 
-                                          ti = find_tissue(param, species), 
-                                          data = as.data.frame(subset(data_all2, YEAR %in% 1992:2022)), 
-                                          variable_name = "Concentration", 
-                                          min_indiv_per_year = find_min_indiv_per_year(species))
+annualmedians_result <- get_lower_medians(
+  par = param, 
+  sp = species, 
+  ti = find_tissue(param, species, before_underscores = TRUE), 
+  data = as.data.frame(subset(data_all2, YEAR %in% 1992:2022)), 
+  variable_name = "Concentration", 
+  min_indiv_per_year = find_min_indiv_per_year(species))
 str(annualmedians_result, 1)
 # annualmedians$median_per_station
 
@@ -453,14 +463,17 @@ ggplot(df_medians %>% filter(Background1b == "Background"),
 ```
 
 
+### 3.6 "Lost" parameters  
+
 #### "Lost" parameters 1    
 ```{r}
 
 df_series_sel_summ <- df_series_sel %>% 
   filter(grepl("__WW$", PARAM) & 
            Species %in% c("Gadus morhua", "Mytilus edulis")) %>% 
-  count(PARAM, Species) %>% 
-  pivot_wider(names_from = Species, values_from = n, values_fill = 0) %>% 
+  mutate(Species = factor(Species, levels = c("Gadus morhua", "Mytilus edulis"))) %>% 
+  count(PARAM, Species, .drop = FALSE) %>%
+  pivot_wider(names_from = Species, values_from = n, values_fill = 0, ) %>% 
   rename(ts_cod = `Gadus morhua`, ts_mussel = `Mytilus edulis`)
 
 # 10 parameters were not in df_series_sel (ts == NA)
@@ -475,9 +488,11 @@ result_detailed_summ <- result_detailed %>%
   filter(grepl("__WW$", PARAM) & 
            LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>% 
   filter(Last_rank) %>% 
-  count(PARAM, LATIN_NAME) %>% 
+  mutate(LATIN_NAME = factor(LATIN_NAME, levels = c("Gadus morhua", "Mytilus edulis"))) %>% 
+  count(PARAM, LATIN_NAME, .drop = FALSE) %>%
   pivot_wider(names_from = LATIN_NAME, values_from = n, values_fill = 0) %>% 
   rename(result1_cod = `Gadus morhua`, result1_mussel = `Mytilus edulis`)
+
 nrow(result_detailed_summ)
 
 
@@ -681,7 +696,7 @@ result_proref <- result_proref %>%
 
 ```
 
-#### Analysis of "lost" parameters  
+### 4.4 Analysis of "lost" parameters  
 ```{r}
 
 result_proref_wide <- result_proref %>% 
@@ -691,6 +706,7 @@ result_proref_wide <- result_proref %>%
     Proref_type %in% "p < 0.10, max median ratio",
     LATIN_NAME %in% c("Gadus morhua", "Mytilus edulis")) %>% 
   select(PARAM, LATIN_NAME, PROREF) %>% 
+  mutate(LATIN_NAME = factor(LATIN_NAME, levels = c("Gadus morhua", "Mytilus edulis"))) %>% 
   pivot_wider(names_from = LATIN_NAME, values_from = PROREF)
 
 params_fate4 <- params_fate3 %>% 
@@ -767,6 +783,8 @@ result_detailed %>%
 
 ## 5. Save  
 
+* resu
+
 ```{r}
 
 if (save_results){
@@ -776,12 +794,15 @@ if (save_results){
   
   fn1 <- paste0("Data/54_result_summ_", txt_years, "_", txt_timestamp, ".csv")
   result_proref %>%
-    readr::write_csv(fn1)  
+    readr::write_csv(fn1)
+  cat("'result_proref' saved as ", fn1, "\n")
   
   fn2 <- paste0("Data/54_result_summ_final_", txt_years, "_", txt_timestamp, ".csv")
   result_proref %>%
     filter(Proref_type %in% "p < 0.10, max median ratio") %>%
     readr::write_csv(fn2)
+  cat("'result_proref' with selected Proref_type saved as ", fn2, "\n")
+  
 }
 
 ```
